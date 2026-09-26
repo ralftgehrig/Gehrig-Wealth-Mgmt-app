@@ -14,13 +14,13 @@
 2. Name it `family-wealth`, pick the **London (eu-west-2)** region, set a strong DB password
 3. Wait ~2 minutes for it to provision
 
-## Step 2 — Run the database migration
+## Step 2 — Run the database migrations
 
 1. In your Supabase dashboard → **SQL Editor**
-2. Open `supabase/migrations/001_schema.sql` from this repo
-3. Paste the entire contents and click **Run**
+2. Open `supabase/migrations/001_schema.sql` from this repo, paste the entire contents and click **Run**
+3. Do the same for `002_performance_income.sql` and `003_transactions.sql`, in order
 
-This creates all tables, indexes, RLS policies, and seeds the default scenarios.
+This creates all tables, indexes, RLS policies, and seeds the default scenarios and spending categories.
 
 ## Step 3 — Create your login user
 
@@ -83,6 +83,16 @@ In Supabase → **Settings** → **API**, note:
 2. Select **RSU / Stock Options** as the type
 3. Enter your grant details and add each vesting tranche with date and number of shares
 4. When a vest date arrives, tap **Mark vested** and enter the actual value and tax withheld
+
+## Spending tracking
+
+1. Go to **Spending** → **Upload statement**
+2. Pick a CSV or Excel export from your bank/card (Barclays, Wise and Amex are auto-detected; other banks fall back to a best-effort column-matching parser)
+3. Confirm which account it belongs to (or create a new one) and review the preview, then **Import transactions**
+4. Re-uploading a statement later (e.g. covering an overlapping date range) automatically skips anything already imported — only genuinely new transactions are added
+5. Money moving between your own accounts is detected automatically and marked as a transfer, excluded from spending/income analysis
+6. Tap the plane icon on a transaction to mark it as business travel (reimbursable) — tagged expenses and their reimbursements are excluded from analysis but reconciled in **Insights**
+7. Correcting a transaction's category is remembered — future imports from that merchant use your correction automatically
 
 ---
 

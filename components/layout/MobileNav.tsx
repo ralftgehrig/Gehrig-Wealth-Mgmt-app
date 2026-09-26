@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Wallet, TrendingUp, BarChart3, Lightbulb, Eye, EyeOff } from 'lucide-react';
+import { LayoutDashboard, Wallet, TrendingUp, BarChart3, Lightbulb, Eye, EyeOff, Receipt } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDisplayCurrency } from '@/lib/display-currency';
 
 const navItems = [
   { href: '/dashboard',   icon: LayoutDashboard, label: 'Home' },
   { href: '/accounts',    icon: Wallet,           label: 'Accounts' },
+  { href: '/spending',    icon: Receipt,          label: 'Spending' },
   { href: '/income',      icon: TrendingUp,       label: 'Income' },
   { href: '/projections', icon: BarChart3,        label: 'Forecast' },
   { href: '/insights',    icon: Lightbulb,        label: 'Insights' },
@@ -25,8 +26,9 @@ export default function MobileNav() {
     >
       {/* Floating pill */}
       <div
-        className="flex items-center justify-around px-2 py-1.5"
+        className="flex items-center justify-around px-2 py-1.5 overflow-x-auto"
         style={{
+          scrollbarWidth: 'none',
           background: 'rgba(255, 255, 255, 0.82)',
           backdropFilter: 'blur(24px) saturate(180%)',
           WebkitBackdropFilter: 'blur(24px) saturate(180%)',
@@ -42,7 +44,7 @@ export default function MobileNav() {
               key={href}
               href={href}
               className={cn(
-                'flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-2xl transition-all duration-150',
+                'flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-2xl transition-all duration-150 flex-shrink-0',
                 active ? 'opacity-100' : 'opacity-50 active:opacity-75'
               )}
             >
@@ -75,7 +77,7 @@ export default function MobileNav() {
         <button
           onClick={togglePrivacy}
           aria-label={privacyMode ? 'Show amounts' : 'Hide amounts'}
-          className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-2xl transition-all duration-150 active:opacity-75"
+          className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-2xl transition-all duration-150 active:opacity-75 flex-shrink-0"
           style={{ opacity: privacyMode ? 1 : 0.5 }}
         >
           <div

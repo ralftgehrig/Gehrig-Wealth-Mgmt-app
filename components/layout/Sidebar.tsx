@@ -12,6 +12,7 @@ import {
   LogOut,
   Eye,
   EyeOff,
+  Receipt,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
@@ -22,6 +23,7 @@ const navItems = [
   { href: '/dashboard',   icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/accounts',    icon: Wallet,           label: 'Accounts' },
   { href: '/income',      icon: TrendingUp,       label: 'Income' },
+  { href: '/spending',    icon: Receipt,          label: 'Spending' },
   { href: '/projections', icon: BarChart3,        label: 'Projections' },
   { href: '/insights',    icon: Lightbulb,        label: 'Insights' },
   { href: '/settings',    icon: Settings,         label: 'Settings' },
