@@ -43,11 +43,17 @@ async function loadCategoryMaps(supabase: SupabaseClient): Promise<CategoryMaps>
 }
 
 async function loadMerchantRules(supabase: SupabaseClient): Promise<Map<string, string>> {
-  const { data } = await supabase
-    .from('merchant_category_rules')
-    .select('match_text, category:transaction_categories(slug)');
+  const rows = await fetchAllPages<{
+    match_text: string;
+    category: { slug: string } | { slug: string }[] | null;
+  }>((from, to) =>
+    supabase
+      .from('merchant_category_rules')
+      .select('match_text, category:transaction_categories(slug)')
+      .range(from, to)
+  );
   const map = new Map<string, string>();
-  for (const row of (data ?? []) as Array<{ match_text: string; category: { slug: string } | { slug: string }[] | null }>) {
+  for (const row of rows) {
     const cat = Array.isArray(row.category) ? row.category[0] : row.category;
     if (cat?.slug) map.set(row.match_text, cat.slug);
   }
@@ -139,12 +145,18 @@ export async function planDedup<T extends { content_hash: string }>(
   const uniqueHashes = [...groups.keys()];
   const existingCounts = new Map<string, number>();
   if (uniqueHashes.length > 0) {
-    const { data: existing } = await supabase
-      .from('transactions')
-      .select('content_hash')
-      .eq('spending_account_id', spendingAccountId)
-      .in('content_hash', uniqueHashes);
-    for (const r of (existing ?? []) as Array<{ content_hash: string }>) {
+    // A big re-uploaded statement (e.g. a year of Amex) can easily have more than
+    // 1000 matching hashes already stored, so this pages through all of them —
+    // an undercount here would wrongly treat already-imported rows as new.
+    const existing = await fetchAllPages<{ content_hash: string }>((from, to) =>
+      supabase
+        .from('transactions')
+        .select('content_hash')
+        .eq('spending_account_id', spendingAccountId)
+        .in('content_hash', uniqueHashes)
+        .range(from, to)
+    );
+    for (const r of existing) {
       existingCounts.set(r.content_hash, (existingCounts.get(r.content_hash) ?? 0) + 1);
     }
   }
