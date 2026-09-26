@@ -64,6 +64,18 @@ export default function SpendingPage() {
     await Promise.all([mutate('/api/spending/accounts'), mutate('/api/spending/transactions')]);
   };
 
+  const handleApplyToMerchant = async (transactionId: string) => {
+    const res = await fetch('/api/spending/transactions/apply-to-merchant', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transactionId }),
+    });
+    const json = await res.json();
+    await mutate('/api/spending/transactions');
+    if (!res.ok) throw new Error(json.error || 'Failed to apply category');
+    return json as { merchant: string; updatedCount: number };
+  };
+
   const handleReconcileTransfers = async () => {
     setReconciling(true);
     try {
@@ -71,7 +83,13 @@ export default function SpendingPage() {
       const json = await res.json();
       await mutate('/api/spending/transactions');
       if (res.ok) {
-        alert(`Re-checked transfers: ${json.resetCount} reset, ${json.matchedCount} confirmed as matching transfers.`);
+        const hint =
+          json.matchedCount === 0 && json.accountsInvolved < 2
+            ? ` (only ${json.accountsInvolved} account has untagged transactions — a transfer needs both sides, e.g. the current account a card payment came from, to also be imported)`
+            : '';
+        alert(
+          `Re-checked transfers: ${json.resetCount} reset, ${json.matchedCount} confirmed as matching transfers out of ${json.candidateCount} candidates across ${json.accountsInvolved} accounts.${hint}`
+        );
       } else {
         alert(json.error || 'Failed to re-check transfers');
       }
@@ -131,6 +149,7 @@ export default function SpendingPage() {
           categories={categories}
           onUpdate={handleUpdateTransaction}
           onDelete={handleDeleteTransaction}
+          onApplyToMerchant={handleApplyToMerchant}
         />
       )}
 

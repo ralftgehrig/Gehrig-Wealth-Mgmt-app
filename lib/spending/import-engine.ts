@@ -3,6 +3,7 @@ import { contentHash } from './normalize';
 import { guessCategorySlug } from './categorize';
 import { resolveRatesForRows } from './fx';
 import { matchTransfers } from './transfers';
+import { fetchAllPages } from './db-utils';
 import type { NormalizedRow, ParsedStatement, SpendingAccountSubtype } from './types';
 import type { Currency } from '@/lib/types';
 
@@ -169,6 +170,8 @@ export interface CommitResult {
   newRows: number;
   duplicateRows: number;
   transferRows: number;
+  transferCandidates: number;
+  transferAccountsInvolved: number;
 }
 
 export async function commitImport(
@@ -204,11 +207,15 @@ export async function commitImport(
   }
 
   let transferRows = 0;
+  let transferCandidates = 0;
+  let transferAccountsInvolved = 0;
   if (toInsert.length > 0) {
     const dates = toInsert.map((r) => r.tx_date).sort();
-    const matched = await matchTransfers(supabase, dates[0], dates[dates.length - 1]);
-    transferRows += matched;
-    if (matched > 0) {
+    const matchResult = await matchTransfers(supabase, dates[0], dates[dates.length - 1]);
+    transferRows = matchResult.matchedCount;
+    transferCandidates = matchResult.candidateCount;
+    transferAccountsInvolved = matchResult.accountsInvolved;
+    if (transferRows > 0) {
       await supabase.from('import_batches').update({ transfer_rows: transferRows }).eq('id', batch.id);
     }
   }
@@ -219,12 +226,16 @@ export async function commitImport(
     newRows: toInsert.length,
     duplicateRows: duplicateCount,
     transferRows,
+    transferCandidates,
+    transferAccountsInvolved,
   };
 }
 
 export interface ReconcileResult {
   resetCount: number;
   matchedCount: number;
+  candidateCount: number;
+  accountsInvolved: number;
 }
 
 /**
@@ -238,18 +249,19 @@ export interface ReconcileResult {
  * only genuine cross-account matches stay tagged.
  */
 export async function reconcileTransfers(supabase: SupabaseClient): Promise<ReconcileResult> {
-  const { data: unconfirmed } = await supabase
-    .from('transactions')
-    .select('id, merchant, description, amount_gbp')
-    .eq('is_transfer', true)
-    .is('transfer_group_id', null);
-
-  const rows = (unconfirmed ?? []) as Array<{
+  const rows = await fetchAllPages<{
     id: string;
     merchant: string | null;
     description: string;
     amount_gbp: number;
-  }>;
+  }>((from, to) =>
+    supabase
+      .from('transactions')
+      .select('id, merchant, description, amount_gbp')
+      .eq('is_transfer', true)
+      .is('transfer_group_id', null)
+      .range(from, to)
+  );
 
   if (rows.length > 0) {
     const [maps, merchantRules] = await Promise.all([loadCategoryMaps(supabase), loadMerchantRules(supabase)]);
@@ -280,11 +292,16 @@ export async function reconcileTransfers(supabase: SupabaseClient): Promise<Reco
   ]);
 
   let matchedCount = 0;
+  let candidateCount = 0;
+  let accountsInvolved = 0;
   if (earliest?.tx_date && latest?.tx_date) {
-    matchedCount = await matchTransfers(supabase, earliest.tx_date, latest.tx_date);
+    const result = await matchTransfers(supabase, earliest.tx_date, latest.tx_date);
+    matchedCount = result.matchedCount;
+    candidateCount = result.candidateCount;
+    accountsInvolved = result.accountsInvolved;
   }
 
-  return { resetCount: rows.length, matchedCount };
+  return { resetCount: rows.length, matchedCount, candidateCount, accountsInvolved };
 }
 
 export interface PreviewResult {

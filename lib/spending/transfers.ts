@@ -1,8 +1,9 @@
 import { randomUUID } from 'crypto';
 import { differenceInCalendarDays, addDays, parseISO, format } from 'date-fns';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { fetchAllPages } from './db-utils';
 
-const MAX_DAY_GAP = 5;
+const MAX_DAY_GAP = 10;
 const AMOUNT_TOLERANCE_RATIO = 0.02;
 const MIN_AMOUNT_TOLERANCE = 0.5;
 
@@ -13,15 +14,22 @@ interface Candidate {
   amount_gbp: number;
 }
 
+export interface MatchTransfersResult {
+  matchedCount: number;
+  /** How many candidate (untagged) transactions were considered, and across how many accounts — lets the caller tell "no data to match against" from "a real gap". */
+  candidateCount: number;
+  accountsInvolved: number;
+}
+
 /**
  * Finds pairs of opposite-sign transactions across *different* spending
- * accounts, within a few days and a close amount (allowing for FX spread),
- * and marks them as transfers rather than spending/income — e.g. a credit
- * card payment matched against the debit in the current account it was paid
- * from, or a savings top-up matched against the debit that funded it. This
- * is the *only* mechanism that excludes a row from analysis: nothing at
- * parse time guesses at transfers, since that can't confirm the other side
- * is actually one of the user's own imported accounts.
+ * accounts, within a short window and a close amount (allowing for FX
+ * spread), and marks them as transfers rather than spending/income — e.g. a
+ * credit card payment matched against the debit in the current account it
+ * was paid from, or a savings top-up matched against the debit that funded
+ * it. This is the *only* mechanism that excludes a row from analysis:
+ * nothing at parse time guesses at transfers, since that can't confirm the
+ * other side is actually one of the user's own imported accounts.
  *
  * Scoped to the date range of the batch just imported (±MAX_DAY_GAP) to keep
  * this cheap; run after every import so newly uploaded rows are checked
@@ -31,7 +39,7 @@ export async function matchTransfers(
   supabase: SupabaseClient,
   fromDateISO: string,
   toDateISO: string
-): Promise<number> {
+): Promise<MatchTransfersResult> {
   const { data: transfersCategory } = await supabase
     .from('transaction_categories')
     .select('id')
@@ -42,16 +50,20 @@ export async function matchTransfers(
   const windowStart = format(addDays(parseISO(fromDateISO), -MAX_DAY_GAP), 'yyyy-MM-dd');
   const windowEnd = format(addDays(parseISO(toDateISO), MAX_DAY_GAP), 'yyyy-MM-dd');
 
-  const { data: candidates } = await supabase
-    .from('transactions')
-    .select('id, spending_account_id, tx_date, amount_gbp')
-    .eq('is_transfer', false)
-    .is('transfer_group_id', null)
-    .gte('tx_date', windowStart)
-    .lte('tx_date', windowEnd);
+  const rows = await fetchAllPages<Candidate>((from, to) =>
+    supabase
+      .from('transactions')
+      .select('id, spending_account_id, tx_date, amount_gbp')
+      .eq('is_transfer', false)
+      .is('transfer_group_id', null)
+      .gte('tx_date', windowStart)
+      .lte('tx_date', windowEnd)
+      .range(from, to)
+  );
 
-  const rows = (candidates ?? []) as Candidate[];
-  if (rows.length < 2) return 0;
+  const candidateCount = rows.length;
+  const accountsInvolved = new Set(rows.map((r) => r.spending_account_id)).size;
+  if (rows.length < 2) return { matchedCount: 0, candidateCount, accountsInvolved };
 
   const used = new Set<string>();
   const updates: Array<{ id: string; transfer_group_id: string }> = [];
@@ -99,5 +111,5 @@ export async function matchTransfers(
       .eq('id', u.id);
   }
 
-  return updates.length;
+  return { matchedCount: updates.length, candidateCount, accountsInvolved };
 }
