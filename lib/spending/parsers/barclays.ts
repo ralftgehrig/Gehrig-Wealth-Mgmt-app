@@ -1,5 +1,5 @@
 import Papa from 'papaparse';
-import { parseUKDate, cleanText, isLikelySelfPayee } from '../normalize';
+import { parseUKDate, cleanText } from '../normalize';
 import type { NormalizedRow, ParsedStatement } from '../types';
 
 const BANK_HEADER = /^Number,Date,Account,Amount,Subcategory,Memo/i;
@@ -25,8 +25,13 @@ function parseAmount(raw: string): number {
  * savings account shows credits (money in) as positive, like a bank
  * statement; a Barclaycard shows charges (spend) as positive and payments/
  * refunds as negative, like Amex.
+ *
+ * Note: this parser doesn't guess at transfers ("Funds Transfer",
+ * "Payment received" etc. are just a category hint) — a row is only ever
+ * excluded from spending/income analysis once it's actually matched against
+ * an opposite entry in one of the user's *other* imported accounts.
  */
-export function parseBarclays(text: string, fileName: string, selfNames: string[] = []): ParsedStatement {
+export function parseBarclays(text: string, fileName: string): ParsedStatement {
   const firstLine = (text.split(/\r?\n/)[0] ?? '').trim();
   const isCard = CARD_HEADER.test(firstLine);
 
@@ -57,8 +62,6 @@ export function parseBarclays(text: string, fileName: string, selfNames: string[
     const subcategory = cleanText(raw.Subcategory);
     const description = [subcategory, memo].filter(Boolean).join(' — ');
 
-    const isCardPayment = isCard && subcategory === 'Payment received';
-
     rows.push({
       tx_date: parseUKDate(raw.Date),
       description: description || subcategory || 'Transaction',
@@ -66,7 +69,6 @@ export function parseBarclays(text: string, fileName: string, selfNames: string[
       amount,
       currency: 'GBP',
       source_category_hint: subcategory || null,
-      is_transfer_hint: subcategory === 'Funds Transfer' || isCardPayment || isLikelySelfPayee(memo, selfNames),
       cardholder_name: null,
       raw,
     });

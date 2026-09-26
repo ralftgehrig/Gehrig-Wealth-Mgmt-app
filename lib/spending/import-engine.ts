@@ -58,11 +58,6 @@ async function loadFamilyMembers(supabase: SupabaseClient) {
   return (data ?? []) as Array<{ id: string; name: string }>;
 }
 
-export async function getSelfNames(supabase: SupabaseClient): Promise<string[]> {
-  const members = await loadFamilyMembers(supabase);
-  return members.map((m) => m.name);
-}
-
 function resolveCategoryId(slug: string, maps: CategoryMaps, isInflow: boolean): string {
   return maps.slugToId.get(slug) ?? (isInflow ? maps.incomeOtherId : maps.generalId);
 }
@@ -92,18 +87,13 @@ export async function resolveRows(
 
   return parsed.rows.map((row: NormalizedRow) => {
     const isInflow = row.amount > 0;
-    let categorySlug: string;
-    if (row.is_transfer_hint) {
-      categorySlug = 'transfers';
-    } else {
-      categorySlug = guessCategorySlug({
-        merchant: row.merchant,
-        description: row.description,
-        sourceCategoryHint: row.source_category_hint,
-        isInflow,
-        merchantRules,
-      }).slug;
-    }
+    const categorySlug = guessCategorySlug({
+      merchant: row.merchant,
+      description: row.description,
+      sourceCategoryHint: row.source_category_hint,
+      isInflow,
+      merchantRules,
+    }).slug;
 
     const rate = row.currency === 'GBP' ? 1 : rateMap.get(`${row.currency}|${row.tx_date}`) ?? 1;
 
@@ -118,7 +108,9 @@ export async function resolveRows(
       amount_gbp: Math.round(row.amount * rate * 100) / 100,
       category_id: resolveCategoryId(categorySlug, maps, isInflow),
       category_confidence: 'auto',
-      is_transfer: row.is_transfer_hint,
+      // Never guessed at import time — only a confirmed cross-account match (matchTransfers,
+      // run below) excludes a row from spending/income analysis.
+      is_transfer: false,
       content_hash: contentHash(spendingAccountId, row.tx_date, row.amount, row.description),
       raw_source: row.raw,
     };
@@ -198,7 +190,7 @@ export async function commitImport(
       total_rows: resolved.length,
       new_rows: toInsert.length,
       duplicate_rows: duplicateCount,
-      transfer_rows: toInsert.filter((r) => r.is_transfer).length,
+      transfer_rows: 0,
     })
     .select()
     .single();
@@ -211,7 +203,7 @@ export async function commitImport(
     if (insertError) throw new Error(insertError.message);
   }
 
-  let transferRows = toInsert.filter((r) => r.is_transfer).length;
+  let transferRows = 0;
   if (toInsert.length > 0) {
     const dates = toInsert.map((r) => r.tx_date).sort();
     const matched = await matchTransfers(supabase, dates[0], dates[dates.length - 1]);
@@ -228,6 +220,71 @@ export async function commitImport(
     duplicateRows: duplicateCount,
     transferRows,
   };
+}
+
+export interface ReconcileResult {
+  resetCount: number;
+  matchedCount: number;
+}
+
+/**
+ * One-time fix for transactions tagged `is_transfer` by an earlier version of
+ * the importer that guessed from the description alone (e.g. "this looks
+ * like Wise's own name" or "this is a card payment"), without ever
+ * confirming the other side was actually one of the user's imported
+ * accounts. Resets any such row — identified as `is_transfer = true` but
+ * never assigned a `transfer_group_id` by a real match — back to a normal
+ * category, then re-runs matching across the full transaction history so
+ * only genuine cross-account matches stay tagged.
+ */
+export async function reconcileTransfers(supabase: SupabaseClient): Promise<ReconcileResult> {
+  const { data: unconfirmed } = await supabase
+    .from('transactions')
+    .select('id, merchant, description, amount_gbp')
+    .eq('is_transfer', true)
+    .is('transfer_group_id', null);
+
+  const rows = (unconfirmed ?? []) as Array<{
+    id: string;
+    merchant: string | null;
+    description: string;
+    amount_gbp: number;
+  }>;
+
+  if (rows.length > 0) {
+    const [maps, merchantRules] = await Promise.all([loadCategoryMaps(supabase), loadMerchantRules(supabase)]);
+    for (const row of rows) {
+      const isInflow = row.amount_gbp > 0;
+      const slug = guessCategorySlug({
+        merchant: row.merchant ?? row.description,
+        description: row.description,
+        sourceCategoryHint: null,
+        isInflow,
+        merchantRules,
+      }).slug;
+      await supabase
+        .from('transactions')
+        .update({
+          is_transfer: false,
+          transfer_group_id: null,
+          category_id: resolveCategoryId(slug, maps, isInflow),
+          category_confidence: 'auto',
+        })
+        .eq('id', row.id);
+    }
+  }
+
+  const [{ data: earliest }, { data: latest }] = await Promise.all([
+    supabase.from('transactions').select('tx_date').order('tx_date', { ascending: true }).limit(1).maybeSingle(),
+    supabase.from('transactions').select('tx_date').order('tx_date', { ascending: false }).limit(1).maybeSingle(),
+  ]);
+
+  let matchedCount = 0;
+  if (earliest?.tx_date && latest?.tx_date) {
+    matchedCount = await matchTransfers(supabase, earliest.tx_date, latest.tx_date);
+  }
+
+  return { resetCount: rows.length, matchedCount };
 }
 
 export interface PreviewResult {
@@ -265,15 +322,13 @@ export async function buildPreview(
 
   const sample = parsed.rows.slice(0, 15).map((row) => {
     const isInflow = row.amount > 0;
-    const slug = row.is_transfer_hint
-      ? 'transfers'
-      : guessCategorySlug({
-          merchant: row.merchant,
-          description: row.description,
-          sourceCategoryHint: row.source_category_hint,
-          isInflow,
-          merchantRules,
-        }).slug;
+    const slug = guessCategorySlug({
+      merchant: row.merchant,
+      description: row.description,
+      sourceCategoryHint: row.source_category_hint,
+      isInflow,
+      merchantRules,
+    }).slug;
     return {
       tx_date: row.tx_date,
       description: row.description,

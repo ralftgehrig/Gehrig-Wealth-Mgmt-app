@@ -32,24 +32,6 @@ export function parseISODateTime(value: string): string {
 }
 
 /**
- * Loose match for "does this payee/reference text refer to the account holder
- * themselves?" — UK bank statements often render a standing order or transfer
- * counterparty as "SURNAME INITIAL(S)" (e.g. "GEHRIG R B") rather than a full
- * name, so an exact string match against `selfNames` won't catch it.
- */
-export function isLikelySelfPayee(text: string, selfNames: string[]): boolean {
-  const tokens = normalizeMerchant(text).split(' ').filter(Boolean);
-  if (tokens.length === 0) return false;
-  return selfNames.some((full) => {
-    const parts = normalizeMerchant(full).split(' ').filter(Boolean);
-    if (parts.length < 2) return false;
-    const surname = parts[parts.length - 1];
-    const firstInitial = parts[0][0];
-    return tokens.includes(surname) && tokens.some((t) => t.length <= 2 && t.startsWith(firstInitial));
-  });
-}
-
-/**
  * Stable content hash for dedup: identical (account, date, amount, description)
  * always hashes the same, so re-uploading a statement recognises rows already
  * imported. Genuine repeats (two identical coffees same day) are told apart via

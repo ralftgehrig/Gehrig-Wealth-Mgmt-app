@@ -10,7 +10,7 @@ export interface UploadedFile {
 }
 
 /** Detects the statement format and parses it into normalised rows. */
-export function parseStatementFile(file: UploadedFile, selfNames: string[]): ParsedStatement {
+export function parseStatementFile(file: UploadedFile): ParsedStatement {
   const lowerName = file.name.toLowerCase();
 
   if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls')) {
@@ -19,7 +19,7 @@ export function parseStatementFile(file: UploadedFile, selfNames: string[]): Par
 
   const text = new TextDecoder('utf-8').decode(file.buffer);
 
-  if (detectBarclays(text)) return parseBarclays(text, file.name, selfNames);
-  if (detectWise(text)) return parseWise(text, file.name, selfNames);
+  if (detectBarclays(text)) return parseBarclays(text, file.name);
+  if (detectWise(text)) return parseWise(text, file.name);
   return parseGeneric(text, file.name);
 }

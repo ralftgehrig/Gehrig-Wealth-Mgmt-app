@@ -43,10 +43,6 @@ export function parseAmex(buffer: ArrayBuffer, _fileName: string): ParsedStateme
     const category = iCategory >= 0 ? cleanText(String(row[iCategory] ?? '')) : '';
     const cardMember = iCardMember >= 0 ? cleanText(String(row[iCardMember] ?? '')) : null;
 
-    // Paying off the card from a bank account isn't income — it's the other half of a transfer
-    // whose spending side lives in that bank account's own statement.
-    const isCardPayment = /PAYMENT\s+RECEIVED|AUTOPAY|DIRECT\s+DEBIT\s+PAYMENT/i.test(description);
-
     rows.push({
       tx_date: parseUKDate(dateStr),
       description,
@@ -55,7 +51,6 @@ export function parseAmex(buffer: ArrayBuffer, _fileName: string): ParsedStateme
       amount: -amexAmount,
       currency: 'GBP',
       source_category_hint: category || null,
-      is_transfer_hint: isCardPayment,
       cardholder_name: cardMember,
       raw: Object.fromEntries(header.map((h, i) => [h, row[i]])),
     });

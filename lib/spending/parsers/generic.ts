@@ -87,7 +87,6 @@ export function parseGeneric(text: string, _fileName: string): ParsedStatement {
       amount,
       currency: currency || 'GBP',
       source_category_hint: null,
-      is_transfer_hint: false,
       cardholder_name: null,
       raw,
     });

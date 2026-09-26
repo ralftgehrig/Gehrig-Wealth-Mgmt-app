@@ -24,9 +24,14 @@ export function detectWise(text: string): boolean {
   return /^ID,Status,Direction,/i.test(firstLine);
 }
 
-export function parseWise(text: string, _fileName: string, selfNames: string[]): ParsedStatement {
+/**
+ * Note: this parser doesn't guess at transfers from names or Wise's own
+ * "Money added" category — a row is only ever excluded from spending/income
+ * analysis once it's actually matched against an opposite entry in one of
+ * the user's *other* imported accounts.
+ */
+export function parseWise(text: string, _fileName: string): ParsedStatement {
   const result = Papa.parse<WiseRow>(text, { header: true, skipEmptyLines: true });
-  const selfSet = new Set(selfNames.map((n) => n.trim().toLowerCase()).filter(Boolean));
 
   const rows: NormalizedRow[] = [];
 
@@ -43,12 +48,6 @@ export function parseWise(text: string, _fileName: string, selfNames: string[]):
     const amount = isOut ? -magnitude : magnitude;
     const counterpartyName = isOut ? cleanText(raw['Target name']) : cleanText(raw['Source name']);
 
-    // The account holder is *always* the "source" of an OUT row and the "target" of an IN row —
-    // that's just how Wise labels its own wallet, not a signal of anything. A self-transfer is only
-    // indicated when the *other* side of the transaction also belongs to the account holder (e.g.
-    // topping up the Wise balance from their own bank, or an internal currency conversion).
-    const isSelfTransfer = selfSet.has(counterpartyName.toLowerCase());
-
     const reference = cleanText(raw.Reference) || cleanText(raw.Note);
     const description = [counterpartyName, reference].filter(Boolean).join(' — ') || raw.ID;
 
@@ -59,7 +58,6 @@ export function parseWise(text: string, _fileName: string, selfNames: string[]):
       amount,
       currency,
       source_category_hint: cleanText(raw.Category) || null,
-      is_transfer_hint: isSelfTransfer,
       cardholder_name: null,
       raw: raw as unknown as Record<string, unknown>,
     });

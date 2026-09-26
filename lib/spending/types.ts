@@ -69,7 +69,6 @@ export interface NormalizedRow {
   amount: number; // signed: positive = in, negative = out, in `currency`
   currency: Currency;
   source_category_hint: string | null;
-  is_transfer_hint: boolean;
   cardholder_name: string | null;
   raw: Record<string, unknown>;
 }

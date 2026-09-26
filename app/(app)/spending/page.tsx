@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import useSWR, { mutate } from 'swr';
-import { Upload, Settings, Receipt } from 'lucide-react';
+import { Upload, Settings, Receipt, RefreshCw } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import EmptyState from '@/components/ui/EmptyState';
 import UploadModal from '@/components/spending/UploadModal';
@@ -20,6 +20,7 @@ export default function SpendingPage() {
   const [tab, setTab] = useState<Tab>('transactions');
   const [showUpload, setShowUpload] = useState(false);
   const [showAccounts, setShowAccounts] = useState(false);
+  const [reconciling, setReconciling] = useState(false);
 
   const { data: accounts = [] } = useSWR<SpendingAccount[]>('/api/spending/accounts', fetcher);
   const { data: categories = [] } = useSWR<TransactionCategory[]>('/api/spending/categories', fetcher);
@@ -63,6 +64,22 @@ export default function SpendingPage() {
     await Promise.all([mutate('/api/spending/accounts'), mutate('/api/spending/transactions')]);
   };
 
+  const handleReconcileTransfers = async () => {
+    setReconciling(true);
+    try {
+      const res = await fetch('/api/spending/reconcile-transfers', { method: 'POST' });
+      const json = await res.json();
+      await mutate('/api/spending/transactions');
+      if (res.ok) {
+        alert(`Re-checked transfers: ${json.resetCount} reset, ${json.matchedCount} confirmed as matching transfers.`);
+      } else {
+        alert(json.error || 'Failed to re-check transfers');
+      }
+    } finally {
+      setReconciling(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -73,6 +90,9 @@ export default function SpendingPage() {
         <div className="flex gap-2">
           <button className="btn-secondary" onClick={() => setShowAccounts(true)}>
             <Settings className="w-4 h-4" /> Accounts
+          </button>
+          <button className="btn-secondary" onClick={handleReconcileTransfers} disabled={reconciling} title="Re-check which transactions are genuine transfers between your imported accounts">
+            <RefreshCw className={`w-4 h-4 ${reconciling ? 'animate-spin' : ''}`} /> Re-check transfers
           </button>
           <button className="btn-primary" onClick={() => setShowUpload(true)}>
             <Upload className="w-4 h-4" /> Upload statement

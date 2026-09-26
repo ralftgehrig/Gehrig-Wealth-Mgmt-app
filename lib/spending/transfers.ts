@@ -16,14 +16,29 @@ interface Candidate {
 /**
  * Finds pairs of opposite-sign transactions across *different* spending
  * accounts, within a few days and a close amount (allowing for FX spread),
- * and marks them as transfers rather than spending/income. Scoped to the
- * date range of the batch just imported (±MAX_DAY_GAP) to keep this cheap.
+ * and marks them as transfers rather than spending/income — e.g. a credit
+ * card payment matched against the debit in the current account it was paid
+ * from, or a savings top-up matched against the debit that funded it. This
+ * is the *only* mechanism that excludes a row from analysis: nothing at
+ * parse time guesses at transfers, since that can't confirm the other side
+ * is actually one of the user's own imported accounts.
+ *
+ * Scoped to the date range of the batch just imported (±MAX_DAY_GAP) to keep
+ * this cheap; run after every import so newly uploaded rows are checked
+ * against everything already stored in that window, in either direction.
  */
 export async function matchTransfers(
   supabase: SupabaseClient,
   fromDateISO: string,
   toDateISO: string
 ): Promise<number> {
+  const { data: transfersCategory } = await supabase
+    .from('transaction_categories')
+    .select('id')
+    .eq('slug', 'transfers')
+    .single();
+  const transfersCategoryId = transfersCategory?.id as string | undefined;
+
   const windowStart = format(addDays(parseISO(fromDateISO), -MAX_DAY_GAP), 'yyyy-MM-dd');
   const windowEnd = format(addDays(parseISO(toDateISO), MAX_DAY_GAP), 'yyyy-MM-dd');
 
@@ -74,7 +89,14 @@ export async function matchTransfers(
   }
 
   for (const u of updates) {
-    await supabase.from('transactions').update({ is_transfer: true, transfer_group_id: u.transfer_group_id }).eq('id', u.id);
+    await supabase
+      .from('transactions')
+      .update({
+        is_transfer: true,
+        transfer_group_id: u.transfer_group_id,
+        ...(transfersCategoryId ? { category_id: transfersCategoryId, category_confidence: 'auto' } : {}),
+      })
+      .eq('id', u.id);
   }
 
   return updates.length;

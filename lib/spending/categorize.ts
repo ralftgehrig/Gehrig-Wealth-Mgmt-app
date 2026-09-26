@@ -57,6 +57,10 @@ const SOURCE_CATEGORY_MAP: Record<string, string> = {
 
 /** Keyword rules for outgoing (spend) transactions, tested in order — first match wins. */
 const EXPENSE_KEYWORD_RULES: Array<[string, RegExp]> = [
+  // Labelled for clarity even though unmatched — only an actual cross-account match
+  // (see transfers.ts) excludes a row from spending/income analysis.
+  ['transfers', /\b(FUNDS\s*TRANSFER|PAYMENT\s+RECEIVED|AUTOPAY)\b/],
+
   ['health_personal_care.pharmacy', /\b(BOOTS|SUPERDRUG|APOTHEKE|PHARMACY|WALGREENS)\b/],
   ['health_personal_care.personal_care', /\b(TONI\s*&\s*GUY|HAIR\s*(SALON|DRESSER)|BARBER|NAIL\s*BAR|\bSPA\b|DM-?DROGERIE)\b/],
   ['health_personal_care.fitness', /\b(PUREGYM|\bGYM\b|FITNESS\s*FIRST|\bYOGA\b|HUSSLE|THIRD\s*SPACE)\b/],
@@ -110,6 +114,7 @@ const EXPENSE_KEYWORD_RULES: Array<[string, RegExp]> = [
 
 /** Keyword rules for incoming (credit) transactions. */
 const INCOME_KEYWORD_RULES: Array<[string, RegExp]> = [
+  ['transfers', /\b(FUNDS\s*TRANSFER|PAYMENT\s+RECEIVED|AUTOPAY)\b/],
   ['income.interest', /\b(INTEREST\s*PAID|DIVIDEND)\b/],
   ['income.refund', /\b(REFUND|CASHBACK|REBATE)\b/],
   ['income.salary', /\b(SALARY|PAYROLL|\bWAGES\b)\b/],

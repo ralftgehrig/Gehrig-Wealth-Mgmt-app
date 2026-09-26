@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { parseStatementFile } from '@/lib/spending/parsers';
-import { getSelfNames, commitImport } from '@/lib/spending/import-engine';
+import { commitImport } from '@/lib/spending/import-engine';
 
 export async function POST(req: Request) {
   const supabase = createClient();
@@ -21,8 +21,7 @@ export async function POST(req: Request) {
 
   try {
     const buffer = await file.arrayBuffer();
-    const selfNames = await getSelfNames(supabase);
-    const parsed = parseStatementFile({ name: file.name, buffer }, selfNames);
+    const parsed = parseStatementFile({ name: file.name, buffer });
 
     if (!spendingAccountId) {
       if (!newAccountName) {
