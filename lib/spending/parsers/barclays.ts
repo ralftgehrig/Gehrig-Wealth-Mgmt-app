@@ -2,19 +2,34 @@ import Papa from 'papaparse';
 import { parseUKDate, cleanText, isLikelySelfPayee } from '../normalize';
 import type { NormalizedRow, ParsedStatement } from '../types';
 
+const BANK_HEADER = /^Number,Date,Account,Amount,Subcategory,Memo/i;
+const CARD_HEADER = /^Date,Account\/Card No,Amount,Subcategory,Memo/i;
+
 export function detectBarclays(text: string): boolean {
   const firstLine = (text.split(/\r?\n/)[0] ?? '').trim();
-  return /^Number,Date,Account,Amount,Subcategory,Memo/i.test(firstLine);
+  return BANK_HEADER.test(firstLine) || CARD_HEADER.test(firstLine);
+}
+
+function parseAmount(raw: string): number {
+  return parseFloat(raw.replace(/,/g, ''));
 }
 
 /**
- * Barclays current/savings account export. Real-world quirk: every line
- * after the first is prefixed with a stray leading tab character, and the
- * Memo column itself contains an embedded tab between the payee block and
- * the free-text reference — neither affects comma-delimited field parsing,
- * just needs cleanup before display/categorisation.
+ * Barclays/Barclaycard export. Two header variants share the same quirky
+ * format: every line after the first is prefixed with a stray leading tab
+ * character, and the Memo column itself contains an embedded tab between the
+ * payee block and the free-text reference — neither affects comma-delimited
+ * field parsing, just needs cleanup before display/categorisation.
+ *
+ * The two variants also use *opposite* amount sign conventions: a current/
+ * savings account shows credits (money in) as positive, like a bank
+ * statement; a Barclaycard shows charges (spend) as positive and payments/
+ * refunds as negative, like Amex.
  */
-export function parseBarclays(text: string, _fileName: string, selfNames: string[] = []): ParsedStatement {
+export function parseBarclays(text: string, fileName: string, selfNames: string[] = []): ParsedStatement {
+  const firstLine = (text.split(/\r?\n/)[0] ?? '').trim();
+  const isCard = CARD_HEADER.test(firstLine);
+
   const cleaned = text
     .split(/\r?\n/)
     .map((line) => line.replace(/^\t+/, ''))
@@ -29,15 +44,20 @@ export function parseBarclays(text: string, _fileName: string, selfNames: string
   let externalRef: string | null = null;
 
   for (const raw of result.data) {
+    const accountRef = raw.Account ?? raw['Account/Card No'];
     if (!raw.Date || !raw.Amount) continue;
-    externalRef = externalRef ?? cleanText(raw.Account);
+    externalRef = externalRef ?? cleanText(accountRef);
 
-    const amount = parseFloat(raw.Amount);
-    if (Number.isNaN(amount) || amount === 0) continue;
+    const rawAmount = parseAmount(raw.Amount);
+    if (Number.isNaN(rawAmount) || rawAmount === 0) continue;
+    // Bank account: positive = credit (in). Card: positive = charge (out) — flip to our convention.
+    const amount = isCard ? -rawAmount : rawAmount;
 
     const memo = cleanText(raw.Memo);
     const subcategory = cleanText(raw.Subcategory);
     const description = [subcategory, memo].filter(Boolean).join(' — ');
+
+    const isCardPayment = isCard && subcategory === 'Payment received';
 
     rows.push({
       tx_date: parseUKDate(raw.Date),
@@ -46,15 +66,27 @@ export function parseBarclays(text: string, _fileName: string, selfNames: string
       amount,
       currency: 'GBP',
       source_category_hint: subcategory || null,
-      is_transfer_hint: subcategory === 'Funds Transfer' || isLikelySelfPayee(memo, selfNames),
+      is_transfer_hint: subcategory === 'Funds Transfer' || isCardPayment || isLikelySelfPayee(memo, selfNames),
       cardholder_name: null,
       raw,
     });
   }
 
-  const acctSuffix = externalRef?.split(' ').pop();
-  const isSavings = /saving/i.test(_fileName);
+  const acctSuffix = externalRef?.replace(/\*+/g, '').trim().split(' ').pop();
 
+  if (isCard) {
+    return {
+      format: 'barclays',
+      suggested_account_name: acctSuffix ? `Barclaycard ${acctSuffix}` : 'Barclaycard',
+      suggested_institution: 'Barclaycard',
+      suggested_currency: 'GBP',
+      suggested_subtype: 'credit_card',
+      external_ref: externalRef,
+      rows,
+    };
+  }
+
+  const isSavings = /saving/i.test(fileName);
   return {
     format: 'barclays',
     suggested_account_name: acctSuffix ? `Barclays ${isSavings ? 'Savings' : 'Account'} ${acctSuffix}` : 'Barclays Account',

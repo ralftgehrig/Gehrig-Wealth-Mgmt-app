@@ -59,24 +59,25 @@ const SOURCE_CATEGORY_MAP: Record<string, string> = {
 const EXPENSE_KEYWORD_RULES: Array<[string, RegExp]> = [
   ['health_personal_care.pharmacy', /\b(BOOTS|SUPERDRUG|APOTHEKE|PHARMACY|WALGREENS)\b/],
   ['health_personal_care.personal_care', /\b(TONI\s*&\s*GUY|HAIR\s*(SALON|DRESSER)|BARBER|NAIL\s*BAR|\bSPA\b|DM-?DROGERIE)\b/],
-  ['health_personal_care.fitness', /\b(PUREGYM|\bGYM\b|FITNESS\s*FIRST|\bYOGA\b)\b/],
+  ['health_personal_care.fitness', /\b(PUREGYM|\bGYM\b|FITNESS\s*FIRST|\bYOGA\b|HUSSLE|THIRD\s*SPACE)\b/],
+  ['health_personal_care.medical', /\b(SPECSAVERS|OPTICIAN|DENTIST|\bCLINIC\b|\bDOCTOR\b|HOSPITAL)\b/],
 
-  ['groceries', /\b(TESCO|SAINSBURY|ASDA|MORRISON|WAITROSE|CO-?OP|ALDI|LIDL|REWE|EDEKA|KAUFLAND|WHOLE\s*FOODS|TRADER\s*JOE|SAVE-?ON-?FOODS|ERE?WHON|BUDGENS|MARINA\s*MART|HOLLYWOOD\s*MARKET|B[AÄ]CKEREI|BAKERY|PAPPERTS|KAMPS|NEU\s*SCHOLZ|AU\s*BON\s*PAIN)\b/],
+  ['groceries', /\b(TESCO|SAINSBURY'?S?|ASDA|MORRISONS?|WAITROSE|CO-?OP|ALDI|LIDL|REWE|EDEKA|KAUFLAND|WHOLE\s*FOODS|TRADER\s*JOE|SAVE-?ON-?FOODS|ERE?WHON|BUDGENS|MARINA\s*MART|HOLLYWOOD\s*MARKET|B[AÄ]CKEREI|BAKERY|PAPPERTS|KAMPS|NEU\s*SCHOLZ|AU\s*BON\s*PAIN|BETTER\s*PRICE|FOOD\s*CENTRE|FOOD\s*CENTER|VENDING|(?:E\.?\s*)?LECLERC)\b/],
 
-  ['eating_out.takeaway', /\b(DELIVEROO|UBER\s*EATS|JUST\s*EAT|DOORDASH|GRUBHUB|TAKEAWAY)\b/],
-  ['eating_out.cafes', /\b(STARBUCKS|COSTA\s*COFFEE|CAFF?E|EISCAFE|GELATERIA|COFFEE)\b/],
-  ['eating_out.bars', /\b(\bPUB\b|TAPROOM|BREWERY|BREWHOUSE|WINE\s*BAR)\b/],
-  ['eating_out.restaurants', /\b(RESTAURANT|RISTORANTE|TAVERNA|PIZZERIA|TRATTORIA|OLIVE\s*GARDEN|NANDO|WAGAMAMA|SUSHI|RAMEN|STEAKHOUSE|BURGER\s*KING|MCDONALD|\bKFC\b|SUBWAY|DOMINO|WHATABURGER|IN-?N-?OUT|DENNY|BURGERKING)\b/],
+  ['eating_out.takeaway', /\b(DELIVEROO|UBER\s*EATS|JUST\s*EAT|DOORDASH|GRUBHUB|TAKEAWAY|\bITSU\b|UPPER\s*CRUST|HANSEL|PRETZEL)\b/],
+  ['eating_out.cafes', /\b(STARBUCKS|COSTA\s*COFFEE|CAFF?E|EISCAFE|GELATERIA|COFFEE|TIM\s*HORTONS)\b/],
+  ['eating_out.bars', /\b(\bPUB\b|TAPROOM|BREWERY|BREWHOUSE|WINE\s*BAR|\bBAR\b)\b/],
+  ['eating_out.restaurants', /\b(RESTAURANT|RISTORANTE|TAVERNA|PIZZERIA|TRATTORIA|OLIVE\s*GARDEN|NANDO|WAGAMAMA|SUSHI|RAMEN|STEAKHOUSE|BURGER\s*KING|MCDONALD|\bKFC\b|SUBWAY|DOMINO|WHATABURGER|IN-?N-?OUT|DENNY|BURGERKING|PRET\s*A\s*MANGER|\bA&W\b)\b/],
 
   ['transport.fuel', /\b(SHELL|\bBP\b|ESSO|CHEVRON|\bARCO\b|PETRO-?CANADA|TOTALENERGIES|\bAVIA\b|7-?ELEVEN)\b/],
-  ['transport.parking', /\b(PARKING|PARKGEB|PARKAUTOMAT|PAYBYPHONE|APCOA|\bNCP\b|PARK\s*SERVICE)\b/],
+  ['transport.parking', /\b(PARKING|PARKGEB|PARKAUTOMAT|PAYBYPHONE|APCOA|\bNCP\b|PARK\s*SERVICE|RINGGO)\b/],
   ['transport.tolls', /\b(VINCI\s*AUTOROUTES|\bTOLL\b|AUTOROUTE|CONGESTION\s*CHARGE)\b/],
   ['transport.public_transport', /\b(TRAINLINE|NATIONAL\s*RAIL|\bTFL\b|UNDERGROUND|\bSNCF\b|DEUTSCHE\s*BAHN)\b/],
   ['transport.rideshare', /\b(UBER(?!\s*EATS)|\bLYFT\b|\bBOLT\b|\bWAYMO\b|\bTAXI\b)\b/],
-  ['transport.maintenance', /\b(GARAGE|\bTYRE\b|\bTIRE\b|MOT\s*TEST|CAR\s*WASH|AUTO\s*REPAIR)\b/],
+  ['transport.maintenance', /\b(GARAGE|\bTYRE\b|\bTIRE\b|MOT\s*TEST|CAR\s*WASH|AUTO\s*REPAIR|HALFORDS)\b/],
 
   ['entertainment.hobbies_gaming', /\b(\bSTEAM\b|PLAYSTATION|\bXBOX\b|NINTENDO|\bG2A\b|MTCGAME|GAMESTOP)\b/],
-  ['entertainment.subscriptions', /\b(NETFLIX|SPOTIFY|DISNEY\+|\bHULU\b|APPLE\s*(MUSIC|TV))\b/],
+  ['entertainment.subscriptions', /\b(NETFLIX|SPOTIFY|DISNEY\+|\bHULU\b|APPLE\s*(MUSIC|TV)|NVIDIA)\b/],
   ['entertainment.cinema_theatre', /\b(CINEMA|KINOPOLIS|\bKINO\b|CINEWORLD|VUE\s*CINEMA|ODEON|THEATRE|THEATER|TODAYTIX|TICKETMASTER)\b/],
   ['entertainment.events', /\b(MUSEUM|STUDIO\s*TOUR|PALACIO\s*REAL|GOUFFRE|GROTTES|\bZOO\b|AQUARIUM)\b/],
 
@@ -85,16 +86,16 @@ const EXPENSE_KEYWORD_RULES: Array<[string, RegExp]> = [
 
   ['shopping.electronics', /\b(BEST\s*BUY|CURRYS|PC\s*WORLD|COMPUTER\s*SUPPLIES)\b/],
   ['shopping.online_marketplace', /\b(AMAZON|\bAMZN\b|\bEBAY\b|\bETSY\b|ALIEXPRESS)\b/],
-  ['shopping.general', /\b(TARGET|WALMART|DOLLARAMA|E\.?\s*LECLERC|MARKS\s*&\s*SPENCER|\bM&S\b|JOHN\s*LEWIS|\bARGOS\b|G[ÉE]MO)\b/],
+  ['shopping.general', /\b(TARGET|WALMART|DOLLARAMA|MARKS\s*&\s*SPENCER|\bM&S\b|JOHN\s*LEWIS|\bARGOS\b|G[ÉE]MO|FLYING\s*TIGER)\b/],
 
   ['bills_utilities.phone_internet', /\b(VODAFONE|\bO2\b|\bEE\b|THREE\s*MOBILE|MYTELLO|TELEF[OÓ]NICA|VERIZON|AT&T|T-MOBILE)\b/],
   ['bills_utilities.insurance', /\b(LIFE\s*INSURANCE|INSURANCE|\bAVIVA\b|\bAXA\b|ALLIANZ)\b/],
   ['bills_utilities.energy', /\b(BRITISH\s*GAS|OCTOPUS\s*ENERGY|EDF\s*ENERGY|\bE\.?ON\b|SCOTTISH\s*POWER)\b/],
-  ['bills_utilities.subscriptions', /\b(OPENAI|CHATGPT|MICROSOFT\s*365|\bADOBE\b|ICLOUD|DROPBOX|GITHUB)\b/],
+  ['bills_utilities.subscriptions', /\b(OPENAI|CHATGPT|MICROSOFT\s*365|\bADOBE\b|ICLOUD|DROPBOX|GITHUB|PATREON|APPLE\.COM)\b/],
   ['bills_utilities.council_tax', /\b(COUNCIL\s*TAX|COMUNE\s*DI|CITY\s*COUNCIL)\b/],
 
   ['housing.rent_mortgage', /\b(\bRENT\b|MORTGAGE|LANDLORD)\b/],
-  ['housing.maintenance', /\b(PLUMBER|ELECTRICIAN|\bB&Q\b|HOMEBASE|\bIKEA\b)\b/],
+  ['housing.maintenance', /\b(PLUMBER|ELECTRICIAN|\bB&Q\b|HOMEBASE|\bIKEA\b|SCREWFIX|TOOLSTATION)\b/],
 
   ['family_kids.childcare', /\b(NURSERY|CHILDCARE|CR[EÈ]CHE|BABYSITT)\b/],
   ['family_kids.education', /\b(SCHOOL\s*FEES|TUITION|UNIVERSITY)\b/],
@@ -102,7 +103,7 @@ const EXPENSE_KEYWORD_RULES: Array<[string, RegExp]> = [
   ['fees_charges.debt_collection', /\b(EOS-?DT-?INKASSO|INKASSO|DEBT\s*COLLECTION)\b/],
   ['fees_charges.cash_withdrawal', /\b(\bATM\b|CASH\s*WITHDRAWAL|CASHPOINT)\b/],
   ['fees_charges.fx_fees', /\b(FX\s*FEE|FOREIGN\s*TRANSACTION\s*FEE|CURRENCY\s*CONVERSION\s*FEE)\b/],
-  ['fees_charges.bank_fees', /\b(ASSETS?\s*FEE|ACCOUNT\s*FEE|MONTHLY\s*FEE|CARD\s*FEE|OVERDRAFT|TRANSFERWISE|CARD\s*ORDER)\b/],
+  ['fees_charges.bank_fees', /\b(ASSETS?\s*FEE|ACCOUNT\s*FEE|MONTHLY\s*FEE|MEMBERSHIP\s*FEE|CARD\s*FEE|OVERDRAFT|TRANSFERWISE|CARD\s*ORDER)\b/],
 
   ['gifts_donations', /\b(DONATION|CHARITY|GOFUNDME|JUSTGIVING|OXFAM)\b/],
 ];
