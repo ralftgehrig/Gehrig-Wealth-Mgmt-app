@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Search, Trash2, ArrowLeftRight, Plane, X, Layers, ArrowUpDown } from 'lucide-react';
+import { Search, Trash2, ArrowLeftRight, Plane, X, Layers, ArrowUpDown, Pencil, Check } from 'lucide-react';
 import CategorySelect from './CategorySelect';
 import EmptyState from '@/components/ui/EmptyState';
 import { formatDate, groupBy, sumBy } from '@/lib/utils';
@@ -64,7 +64,7 @@ export default function TransactionsView({ transactions, accounts, categories, o
       if (from && t.tx_date < from) return false;
       if (to && t.tx_date > to) return false;
       if (accountFilter && t.spending_account_id !== accountFilter) return false;
-      if (term && !(t.description.toLowerCase().includes(term) || t.merchant?.toLowerCase().includes(term))) return false;
+      if (term && !(t.description.toLowerCase().includes(term) || t.merchant?.toLowerCase().includes(term) || t.custom_title?.toLowerCase().includes(term))) return false;
       return true;
     });
   }, [transactions, from, to, accountFilter, categoryFilter, showTransfers, showTagged, travelReview, search, categoryById]);
@@ -75,7 +75,7 @@ export default function TransactionsView({ transactions, accounts, categories, o
       let cmp = 0;
       if (sortBy === 'date') cmp = a.tx_date < b.tx_date ? -1 : a.tx_date > b.tx_date ? 1 : 0;
       else if (sortBy === 'amount') cmp = Math.abs(a.amount_gbp) - Math.abs(b.amount_gbp);
-      else cmp = (a.merchant || a.description).localeCompare(b.merchant || b.description);
+      else cmp = (a.custom_title || a.merchant || a.description).localeCompare(b.custom_title || b.merchant || b.description);
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return arr;
@@ -299,6 +299,20 @@ function TransactionRow({
   fmt: (v: number, compact?: boolean) => string;
 }) {
   const [applying, setApplying] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+
+  const startEditingTitle = () => {
+    setTitleDraft(tx.custom_title ?? '');
+    setEditingTitle(true);
+  };
+
+  const saveTitle = async () => {
+    setEditingTitle(false);
+    const trimmed = titleDraft.trim();
+    if (trimmed === (tx.custom_title ?? '')) return;
+    await onUpdate(tx.id, { custom_title: trimmed || null });
+  };
 
   const handleApplyToMerchant = async () => {
     setApplying(true);
@@ -316,8 +330,38 @@ function TransactionRow({
 
   return (
     <div className="py-2.5 space-y-1.5">
-      {/* Full title — never truncated */}
-      <p className="text-sm font-medium text-gray-900 break-words">{tx.merchant || tx.description}</p>
+      {/* Full title — never truncated. A custom title can override the raw merchant/description. */}
+      {editingTitle ? (
+        <div className="flex items-center gap-2">
+          <input
+            className="input flex-1"
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            placeholder={tx.merchant || tx.description}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') saveTitle();
+              if (e.key === 'Escape') setEditingTitle(false);
+            }}
+          />
+          <button className="btn-ghost p-1.5 text-gray-400 hover:text-green-600" title="Save" onClick={saveTitle}>
+            <Check className="w-3.5 h-3.5" />
+          </button>
+          <button className="btn-ghost p-1.5 text-gray-400 hover:text-red-500" title="Cancel" onClick={() => setEditingTitle(false)}>
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-start gap-1.5">
+          <p className="text-sm font-medium text-gray-900 break-words flex-1">{tx.custom_title || tx.merchant || tx.description}</p>
+          <button className="btn-ghost p-1 text-gray-300 hover:text-blue-600 flex-shrink-0" title="Rename this transaction" onClick={startEditingTitle}>
+            <Pencil className="w-3 h-3" />
+          </button>
+        </div>
+      )}
+      {tx.custom_title && !editingTitle && (
+        <p className="text-xs text-gray-400 -mt-1">Originally: {tx.merchant || tx.description}</p>
+      )}
 
       {/* Meta row: date/badges on the left, controls on the right — wraps freely */}
       <div className="flex items-center justify-between gap-x-3 gap-y-1.5 flex-wrap">

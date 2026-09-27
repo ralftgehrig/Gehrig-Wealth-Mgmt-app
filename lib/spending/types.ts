@@ -43,6 +43,8 @@ export interface Transaction {
   transfer_group_id: string | null;
   tag: TransactionTag | null;
   notes: string | null;
+  /** User-chosen text that replaces the merchant/description in the UI, e.g. renaming a cryptic bank descriptor. */
+  custom_title: string | null;
   created_at: string;
   // joined
   spending_account?: SpendingAccount;
