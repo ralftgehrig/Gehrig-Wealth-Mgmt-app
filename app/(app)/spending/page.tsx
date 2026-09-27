@@ -35,12 +35,16 @@ export default function SpendingPage() {
   };
 
   const handleUpdateTransaction = async (id: string, data: Record<string, unknown>) => {
-    await fetch(`/api/spending/transactions/${id}`, {
+    const res = await fetch(`/api/spending/transactions/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
     await mutate('/api/spending/transactions');
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      alert(json.error || 'Failed to save change');
+    }
   };
 
   const handleDeleteTransaction = async (id: string) => {

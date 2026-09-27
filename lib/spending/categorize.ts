@@ -111,6 +111,12 @@ const EXPENSE_KEYWORD_RULES: Array<[string, RegExp]> = [
   ['fees_charges.bank_fees', /\b(ASSETS?\s*FEE|ACCOUNT\s*FEE|MONTHLY\s*FEE|MEMBERSHIP\s*FEE|CARD\s*FEE|OVERDRAFT|TRANSFERWISE|CARD\s*ORDER)\b/],
 
   ['gifts_donations', /\b(DONATION|CHARITY|GOFUNDME|JUSTGIVING|OXFAM|RED\s*CROSS|CANCER\s*RESEARCH|COMIC\s*RELIEF|GIVESTAR)\b/],
+
+  ['pets.veterinary', /\b(\bVET\b|VETERINARY|VETS4PETS|ANIMAL\s*HOSPITAL|PDSA)\b/],
+  ['pets.grooming', /\b(PET\s*GROOM|DOG\s*GROOM|DOGGY\s*DAY\s*CARE)\b/],
+  ['pets.boarding_sitting', /\b(PET\s*SIT|DOG\s*SIT|KENNELS|CATTERY|BOARDING\s*KENNEL)\b/],
+  ['pets.insurance', /\b(\bPETPLAN\b|PET\s*INSURANCE|BOUGHT\s*BY\s*MANY)\b/],
+  ['pets.food_supplies', /\b(PETS?\s*AT\s*HOME|PETSMART|PETCO|\bCHEWY\b|PURINA|\bIAMS\b|PEDIGREE|WHISKAS|FELIWAY)\b/],
 ];
 
 /** Keyword rules for incoming (credit) transactions. */
