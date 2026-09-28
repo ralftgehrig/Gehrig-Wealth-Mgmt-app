@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { Search, Trash2, ArrowLeftRight, Plane, X, Layers, ArrowUpDown, Pencil, Check } from 'lucide-react';
 import CategorySelect from './CategorySelect';
 import EmptyState from '@/components/ui/EmptyState';
-import { formatDate, groupBy, sumBy } from '@/lib/utils';
+import { cn, formatDate, groupBy, sumBy } from '@/lib/utils';
 import { useDisplayCurrency } from '@/lib/display-currency';
 import type { Transaction, SpendingAccount, TransactionCategory } from '@/lib/spending/types';
 
@@ -254,7 +254,7 @@ export default function TransactionsView({ transactions, accounts, categories, o
                 </p>
               </div>
             )}
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-gray-200">
               {groupTxs.map((t) => (
                 <TransactionRow
                   key={t.id}
@@ -299,19 +299,30 @@ function TransactionRow({
   fmt: (v: number, compact?: boolean) => string;
 }) {
   const [applying, setApplying] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
+  const currentTitle = tx.custom_title || tx.merchant || tx.description || '';
 
   const startEditingTitle = () => {
-    setTitleDraft(tx.custom_title ?? '');
+    // Pre-fill with the title as currently shown, not blank — the user is renaming it, not starting from scratch.
+    setTitleDraft(currentTitle);
     setEditingTitle(true);
   };
 
   const saveTitle = async () => {
-    setEditingTitle(false);
     const trimmed = titleDraft.trim();
-    if (trimmed === (tx.custom_title ?? '')) return;
-    await onUpdate(tx.id, { custom_title: trimmed || null });
+    if (trimmed === (tx.custom_title ?? '') || (!tx.custom_title && trimmed === currentTitle)) {
+      setEditingTitle(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      await onUpdate(tx.id, { custom_title: trimmed || null });
+      setEditingTitle(false);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleApplyToMerchant = async () => {
@@ -337,23 +348,23 @@ function TransactionRow({
             className="input flex-1"
             value={titleDraft}
             onChange={(e) => setTitleDraft(e.target.value)}
-            placeholder={tx.merchant || tx.description}
             autoFocus
+            disabled={saving}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') saveTitle();
+              if (e.key === 'Enter') { e.preventDefault(); saveTitle(); }
               if (e.key === 'Escape') setEditingTitle(false);
             }}
           />
-          <button className="btn-ghost p-1.5 text-gray-400 hover:text-green-600" title="Save" onClick={saveTitle}>
+          <button className="btn-ghost p-1.5 text-gray-400 hover:text-green-600 disabled:opacity-40" title="Save" onClick={saveTitle} disabled={saving}>
             <Check className="w-3.5 h-3.5" />
           </button>
-          <button className="btn-ghost p-1.5 text-gray-400 hover:text-red-500" title="Cancel" onClick={() => setEditingTitle(false)}>
+          <button className="btn-ghost p-1.5 text-gray-400 hover:text-red-500 disabled:opacity-40" title="Cancel" onClick={() => setEditingTitle(false)} disabled={saving}>
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
       ) : (
         <div className="flex items-start gap-1.5">
-          <p className="text-sm font-medium text-gray-900 break-words flex-1">{tx.custom_title || tx.merchant || tx.description}</p>
+          <p className="text-sm font-medium text-gray-900 break-words flex-1">{currentTitle}</p>
           <button className="btn-ghost p-1 text-gray-300 hover:text-blue-600 flex-shrink-0" title="Rename this transaction" onClick={startEditingTitle}>
             <Pencil className="w-3 h-3" />
           </button>
@@ -363,16 +374,15 @@ function TransactionRow({
         <p className="text-xs text-gray-400 -mt-1">Originally: {tx.merchant || tx.description}</p>
       )}
 
-      {/* Meta row: date/badges on the left, controls on the right — wraps freely */}
+      {/* Meta row: date/badges on the left, controls on the right. The controls stay together
+          as one block (rather than wrapping individually) so amounts and icons line up between rows. */}
       <div className="flex items-center justify-between gap-x-3 gap-y-1.5 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
           <span className="text-xs text-gray-400 flex-shrink-0">{formatDate(tx.tx_date, 'd MMM yyyy')}</span>
           {account && <span className="badge badge-gray flex-shrink-0">{account.name}</span>}
-          {tx.is_transfer && <span className="badge badge-purple flex-shrink-0"><ArrowLeftRight className="w-3 h-3" /> Transfer</span>}
-          {tx.tag === 'business_travel' && <span className="badge badge-amber flex-shrink-0"><Plane className="w-3 h-3" /> Business travel</span>}
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <CategorySelect
             categories={categories}
             value={tx.category_id}
@@ -380,7 +390,7 @@ function TransactionRow({
             className="input !py-1.5 !text-[13px] w-40 flex-shrink-0"
           />
           <button
-            className="btn-ghost p-1.5 text-gray-400 hover:text-blue-600 disabled:opacity-40"
+            className="btn-ghost p-1.5 text-gray-400 hover:text-blue-600 disabled:opacity-40 flex-shrink-0"
             title="Apply this category to all other transactions from this merchant"
             onClick={handleApplyToMerchant}
             disabled={applying}
@@ -388,7 +398,7 @@ function TransactionRow({
             <Layers className="w-3.5 h-3.5" />
           </button>
 
-          <div className="text-right flex-shrink-0">
+          <div className="text-right flex-shrink-0 w-24">
             <p className={`text-sm font-semibold ${tx.amount_gbp < 0 ? 'text-gray-900' : 'text-green-600'}`}>
               {tx.amount_gbp < 0 ? '−' : '+'}{fmt(Math.abs(tx.amount_gbp))}
             </p>
@@ -398,20 +408,26 @@ function TransactionRow({
           </div>
 
           <button
-            className="btn-ghost p-1.5 text-gray-400 hover:text-amber-600"
+            className={cn(
+              'p-1.5 rounded-lg transition-colors flex-shrink-0',
+              tx.tag === 'business_travel' ? 'bg-amber-100 text-amber-600' : 'text-gray-400 hover:bg-gray-100 hover:text-amber-600'
+            )}
             title={tx.tag === 'business_travel' ? 'Remove business travel tag' : 'Tag as business travel (reimbursable)'}
             onClick={() => onUpdate(tx.id, { tag: tx.tag === 'business_travel' ? null : 'business_travel' })}
           >
             <Plane className="w-3.5 h-3.5" />
           </button>
           <button
-            className="btn-ghost p-1.5 text-gray-400 hover:text-purple-600"
+            className={cn(
+              'p-1.5 rounded-lg transition-colors flex-shrink-0',
+              tx.is_transfer ? 'bg-purple-100 text-purple-600' : 'text-gray-400 hover:bg-gray-100 hover:text-purple-600'
+            )}
             title={tx.is_transfer ? 'Unmark as transfer' : 'Mark as transfer'}
             onClick={() => onUpdate(tx.id, { is_transfer: !tx.is_transfer, transfer_group_id: null })}
           >
             <ArrowLeftRight className="w-3.5 h-3.5" />
           </button>
-          <button className="btn-ghost p-1.5 text-gray-400 hover:text-red-500" title="Delete" onClick={() => onDelete(tx.id)}>
+          <button className="btn-ghost p-1.5 text-gray-400 hover:text-red-500 flex-shrink-0" title="Delete" onClick={() => onDelete(tx.id)}>
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>

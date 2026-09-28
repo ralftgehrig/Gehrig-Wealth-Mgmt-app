@@ -103,7 +103,9 @@ export default function SpendingPage() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    // Transaction rows have more columns to line up than other pages, so this page
+    // claims a bit more width than the shared max-w-3xl content container.
+    <div className="space-y-6 animate-fade-in xl:-mx-20 2xl:-mx-32">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Spending</h1>
