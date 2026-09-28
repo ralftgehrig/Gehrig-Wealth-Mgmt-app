@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import useSWR, { mutate } from 'swr';
-import { Upload, Settings, Receipt, RefreshCw } from 'lucide-react';
+import { Upload, Settings, Receipt, RefreshCw, ShoppingBag } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import EmptyState from '@/components/ui/EmptyState';
 import UploadModal from '@/components/spending/UploadModal';
 import AccountsManagerModal from '@/components/spending/AccountsManagerModal';
+import AmazonMatchModal from '@/components/spending/AmazonMatchModal';
 import TransactionsView from '@/components/spending/TransactionsView';
 import InsightsView from '@/components/spending/InsightsView';
 import type { FamilyMember } from '@/lib/types';
@@ -20,6 +21,7 @@ export default function SpendingPage() {
   const [tab, setTab] = useState<Tab>('transactions');
   const [showUpload, setShowUpload] = useState(false);
   const [showAccounts, setShowAccounts] = useState(false);
+  const [showAmazonMatch, setShowAmazonMatch] = useState(false);
   const [reconciling, setReconciling] = useState(false);
 
   const { data: accounts = [] } = useSWR<SpendingAccount[]>('/api/spending/accounts', fetcher);
@@ -118,6 +120,9 @@ export default function SpendingPage() {
           <button className="btn-secondary" onClick={handleReconcileTransfers} disabled={reconciling} title="Re-check which transactions are genuine transfers between your imported accounts">
             <RefreshCw className={`w-4 h-4 ${reconciling ? 'animate-spin' : ''}`} /> Re-check transfers
           </button>
+          <button className="btn-secondary" onClick={() => setShowAmazonMatch(true)} title="Match an Amazon order history export against your imported transactions to give them a proper title and category">
+            <ShoppingBag className="w-4 h-4" /> Match Amazon orders
+          </button>
           <button className="btn-primary" onClick={() => setShowUpload(true)}>
             <Upload className="w-4 h-4" /> Upload statement
           </button>
@@ -165,6 +170,14 @@ export default function SpendingPage() {
 
       <Modal open={showUpload} onClose={() => setShowUpload(false)} title="Upload statement" size="lg">
         <UploadModal accounts={accounts} members={members} categories={categories} onImported={refreshAll} onClose={() => setShowUpload(false)} />
+      </Modal>
+
+      <Modal open={showAmazonMatch} onClose={() => setShowAmazonMatch(false)} title="Match Amazon orders" size="lg">
+        <AmazonMatchModal
+          categories={categories}
+          onApplied={() => mutate('/api/spending/transactions')}
+          onClose={() => setShowAmazonMatch(false)}
+        />
       </Modal>
 
       {showAccounts && (
