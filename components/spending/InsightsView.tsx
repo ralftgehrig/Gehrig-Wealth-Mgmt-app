@@ -7,23 +7,10 @@ import {
 import { TrendingDown, TrendingUp, Plane, Lightbulb } from 'lucide-react';
 import { formatDate, groupBy, sumBy } from '@/lib/utils';
 import { useDisplayCurrency } from '@/lib/display-currency';
+import { CATEGORY_PALETTE as PALETTE } from '@/lib/spending/category-colors';
+import { buildIncomeExpenseSankey } from '@/lib/spending/sankey';
+import IncomeExpenseSankey from './IncomeExpenseSankey';
 import type { Transaction, TransactionCategory } from '@/lib/spending/types';
-
-const PALETTE: Record<string, string> = {
-  groceries: '#3b82f6',
-  eating_out: '#8b5cf6',
-  transport: '#10b981',
-  shopping: '#f59e0b',
-  entertainment: '#ec4899',
-  travel: '#06b6d4',
-  health_personal_care: '#84cc16',
-  bills_utilities: '#f97316',
-  housing: '#6366f1',
-  family_kids: '#14b8a6',
-  fees_charges: '#ef4444',
-  gifts_donations: '#a855f7',
-  general: '#64748b',
-};
 
 interface InsightsViewProps {
   transactions: Transaction[];
@@ -74,6 +61,11 @@ export default function InsightsView({ transactions, categories }: InsightsViewP
       .map(([catId, txs]) => ({ id: catId, name: categoryById[catId]?.name ?? 'Other income', total: sumBy(txs, (t) => t.amount_gbp) }))
       .sort((a, b) => b.total - a.total);
   }, [income, categoryById]);
+
+  const sankeyData = useMemo(
+    () => buildIncomeExpenseSankey(income, spending, categories),
+    [income, spending, categories]
+  );
 
   const monthlyTrend = useMemo(() => {
     const groups = groupBy(spending, (t) => t.tx_date.slice(0, 7));
@@ -137,6 +129,14 @@ export default function InsightsView({ transactions, categories }: InsightsViewP
           </p>
         </div>
       </div>
+
+      {sankeyData && (
+        <div className="card hidden lg:block">
+          <p className="text-sm font-semibold text-gray-900 mb-1">Where your money comes from and where it goes</p>
+          <p className="text-xs text-gray-400 mb-4">Income sources on the left, expense categories and subcategories on the right. Hover a flow for the exact amount.</p>
+          <IncomeExpenseSankey data={sankeyData} fmt={fmt} />
+        </div>
+      )}
 
       {spendByCategory.length > 0 && (
         <div className="card">
