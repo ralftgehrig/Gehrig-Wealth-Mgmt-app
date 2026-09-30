@@ -117,6 +117,11 @@ const EXPENSE_KEYWORD_RULES: Array<[string, RegExp]> = [
   ['pets.boarding_sitting', /\b(PET\s*SIT|DOG\s*SIT|KENNELS|CATTERY|BOARDING\s*KENNEL)\b/],
   ['pets.insurance', /\b(\bPETPLAN\b|PET\s*INSURANCE|BOUGHT\s*BY\s*MANY)\b/],
   ['pets.food_supplies', /\b(PETS?\s*AT\s*HOME|PETSMART|PETCO|\bCHEWY\b|PURINA|\bIAMS\b|PEDIGREE|WHISKAS|FELIWAY)\b/],
+
+  ['investments.crypto', /\b(COINBASE|BINANCE|\bKRAKEN\b|CRYPTO\.COM|BITSTAMP|GEMINI\s*(TRUST|CRYPTO)|BITPANDA)\b/],
+  ['investments.robo_advisor', /\b(\bNUTMEG\b|MONEYBOX|WEALTHIFY|WEALTHFRONT|BETTERMENT|WEALTHSIMPLE)\b/],
+  ['investments.pension', /\b(PENSIONBEE|\bNEST\s*PENSION\b|SIPP\b|AVIVA\s*PENSION|SCOTTISH\s*WIDOWS|STANDARD\s*LIFE|LEGAL\s*&\s*GENERAL\s*PENSION)\b/],
+  ['investments.brokerage', /\b(VANGUARD|HARGREAVES\s*LANSDOWN|\bAJ\s*BELL\b|INTERACTIVE\s*INVESTOR|TRADING\s*212|\bFREETRADE\b|\bETORO\b|FIDELITY|CHARLES\s*SCHWAB|\bROBINHOOD\b|E\*?TRADE|INTERACTIVE\s*BROKERS)\b/],
 ];
 
 /** Keyword rules for incoming (credit) transactions. */

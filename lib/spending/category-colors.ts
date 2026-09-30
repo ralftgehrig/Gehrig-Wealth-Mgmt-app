@@ -13,4 +13,6 @@ export const CATEGORY_PALETTE: Record<string, string> = {
   fees_charges: '#ef4444',
   gifts_donations: '#a855f7',
   general: '#64748b',
+  pets: '#f43f5e',
+  investments: '#059669',
 };

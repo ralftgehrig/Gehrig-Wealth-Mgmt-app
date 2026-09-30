@@ -5,6 +5,10 @@ import type { Transaction, TransactionCategory } from './types';
 export interface SankeyNodeDatum {
   name: string;
   color: string;
+  /** Parent category name, shown as context in the hover tooltip — set on income sources and
+   * leaf-level subcategories, where the name alone doesn't say which category it rolls up into
+   * (e.g. multiple categories can each have their own "Other" catch-all leaf). */
+  category?: string;
 }
 
 export interface SankeyLinkDatum {
@@ -56,11 +60,11 @@ export function buildIncomeExpenseSankey(
   const links: SankeyLinkDatum[] = [];
   const indexOf = new Map<string, number>();
 
-  const nodeIndex = (key: string, name: string, color: string): number => {
+  const nodeIndex = (key: string, name: string, color: string, category?: string): number => {
     let idx = indexOf.get(key);
     if (idx === undefined) {
       idx = nodes.length;
-      nodes.push({ name, color });
+      nodes.push({ name, color, category });
       indexOf.set(key, idx);
     }
     return idx;
@@ -77,7 +81,7 @@ export function buildIncomeExpenseSankey(
     const amount = sumBy(txs, (t) => t.amount_gbp);
     if (amount <= 0.005) continue;
     const name = catId === 'uncategorised' ? 'Other income' : categoryById[catId]?.name ?? 'Other income';
-    const idx = nodeIndex(`income:${catId}`, name, SANKEY_ROLE_COLORS.income);
+    const idx = nodeIndex(`income:${catId}`, name, SANKEY_ROLE_COLORS.income, 'Income');
     addLink(idx, totalIdx, amount);
   }
 
@@ -122,7 +126,8 @@ export function buildIncomeExpenseSankey(
       const leafTotal = -sumBy(leafTxs, (t) => t.amount_gbp);
       if (leafTotal <= 0.005) continue;
       const leafName = leafId === 'other' ? (singleBucket ? topName : 'Other') : categoryById[leafId]?.name ?? 'Other';
-      const leafIdx = nodeIndex(`leaf:${topId}:${leafId}`, leafName, topColor);
+      // Redundant when the leaf just reuses the category's own name (single-bucket case).
+      const leafIdx = nodeIndex(`leaf:${topId}:${leafId}`, leafName, topColor, leafName === topName ? undefined : topName);
       addLink(topIdx, leafIdx, leafTotal);
     }
   }

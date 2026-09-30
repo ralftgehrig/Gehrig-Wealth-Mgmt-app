@@ -67,12 +67,21 @@ function SankeyLinkShape(props: any) {
 function SankeyTooltipContent({ active, payload, fmt }: any) {
   if (!active || !payload?.length) return null;
   const item = payload[0];
-  const isLink = item?.payload?.source && item?.payload?.target;
+  // recharts' Sankey wraps things one level deeper than most charts: item.payload is the node's
+  // (or link's) *layout* props (x/y/width/height, or sourceX/targetX/...), not our own data — our
+  // {name, color, category} is nested one level further, at item.payload.payload. For a link,
+  // that inner object's `source`/`target` are the two endpoint nodes themselves (already flat,
+  // not double-nested), so their `.name`/`.category` are read directly off them.
+  const inner = item?.payload?.payload;
+  const isLink = !!(inner?.source && inner?.target);
+  const title = isLink ? `${inner.source.name} → ${inner.target.name}` : inner?.name ?? item.name;
+  // For a link, the target is the more specific end (e.g. a subcategory) — its category is the
+  // useful context. For a node, use its own category.
+  const category = isLink ? inner.target.category : inner?.category;
   return (
     <div className="bg-white border border-gray-100 rounded-xl shadow-lg px-3 py-2 text-xs">
-      <p className="font-semibold text-gray-900">
-        {isLink ? `${item.payload.source.name} → ${item.payload.target.name}` : item.payload.name}
-      </p>
+      <p className="font-semibold text-gray-900">{title}</p>
+      {category && <p className="text-gray-400">{category}</p>}
       <p className="text-gray-600 mt-0.5">{fmt(item.value)}</p>
     </div>
   );
@@ -94,7 +103,7 @@ export default function IncomeExpenseSankey({ data, fmt }: IncomeExpenseSankeyPr
     return () => observer.disconnect();
   }, []);
 
-  const height = Math.min(1000, Math.max(560, data.nodes.length * 24));
+  const height = Math.min(1400, Math.max(760, data.nodes.length * 32));
 
   return (
     <div ref={containerRef} className="w-full" style={{ height }}>
