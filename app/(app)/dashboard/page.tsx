@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { TrendingUp, TrendingDown, ArrowUpRight, RefreshCw, Users } from 'lucide-react';
 import NetWorthChart from '@/components/dashboard/NetWorthChart';
+import NetWorthGrowth from '@/components/dashboard/NetWorthGrowth';
 import AssetBreakdown from '@/components/dashboard/AssetBreakdown';
 import { computeNetWorth } from '@/lib/calculations/net-worth';
 import { formatCurrency, formatPercent, formatDate, ageFromDob } from '@/lib/utils';
@@ -105,6 +106,14 @@ export default function DashboardPage() {
         <div className="card">
           <p className="card-title">Net worth over time</p>
           <NetWorthChart data={history} />
+        </div>
+      )}
+
+      {/* Net worth growth */}
+      {history.length > 1 && (
+        <div className="card">
+          <p className="card-title">Net worth growth</p>
+          <NetWorthGrowth history={history} />
         </div>
       )}
 

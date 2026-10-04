@@ -104,3 +104,66 @@ export function buildNetWorthTimeSeries(
 
   return result;
 }
+
+export interface NetWorthHistoryPoint {
+  date: string;
+  total: number;
+}
+
+export interface PeriodGrowth {
+  change: number | null;
+  changePct: number | null;
+}
+
+/**
+ * The net worth total as of a cutoff date: the latest history point on or before it (history is
+ * balance-snapshot-driven and sparse/irregular, so this is "as of the most recent known data at
+ * or before that date", not an exact reading for that exact day).
+ */
+function valueAsOf(history: NetWorthHistoryPoint[], cutoffDate: string): number | null {
+  let result: number | null = null;
+  for (const point of history) {
+    if (point.date > cutoffDate) break;
+    result = point.total;
+  }
+  return result;
+}
+
+function growthBetween(history: NetWorthHistoryPoint[], startCutoff: string, endCutoff: string): PeriodGrowth {
+  const startValue = valueAsOf(history, startCutoff);
+  const endValue = valueAsOf(history, endCutoff);
+  if (startValue === null || endValue === null) return { change: null, changePct: null };
+  const change = endValue - startValue;
+  const changePct = startValue ? change / startValue : null;
+  return { change, changePct };
+}
+
+/**
+ * Growth for each of the last `years` complete calendar years (e.g. 2023/2024/2025 when run in
+ * 2026), the cumulative growth across that whole span, and year-to-date growth for the current,
+ * still-in-progress year — each measured against the nearest known balance at the relevant
+ * year-end cutoff.
+ */
+export function buildNetWorthGrowth(history: NetWorthHistoryPoint[], years = 3, today: Date = new Date()) {
+  const currentYear = today.getFullYear();
+  const lastCompleteYear = currentYear - 1;
+  const firstYear = lastCompleteYear - years + 1;
+
+  const byYear = Array.from({ length: years }, (_, i) => {
+    const year = firstYear + i;
+    return { year, ...growthBetween(history, `${year - 1}-12-31`, `${year}-12-31`) };
+  });
+
+  const cumulative = {
+    fromYear: firstYear,
+    toYear: lastCompleteYear,
+    ...growthBetween(history, `${firstYear - 1}-12-31`, `${lastCompleteYear}-12-31`),
+  };
+
+  const ytd = {
+    year: currentYear,
+    ...growthBetween(history, `${currentYear - 1}-12-31`, today.toISOString().slice(0, 10)),
+  };
+
+  return { byYear, cumulative, ytd };
+}
