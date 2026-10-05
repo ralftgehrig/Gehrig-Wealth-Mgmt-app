@@ -374,29 +374,21 @@ function TransactionRow({
         <p className="text-xs text-gray-400 -mt-1">Originally: {tx.merchant || tx.description}</p>
       )}
 
-      {/* Meta row: date/badges on the left, controls on the right. The controls stay together
-          as one block (rather than wrapping individually) so amounts and icons line up between rows. */}
+      {/* Meta row: date/badges on the left, controls on the right. On narrow viewports the controls
+          cluster wraps onto its own line(s) rather than forcing the page to scroll horizontally. */}
       <div className="flex items-center justify-between gap-x-3 gap-y-1.5 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
           <span className="text-xs text-gray-400 flex-shrink-0">{formatDate(tx.tx_date, 'd MMM yyyy')}</span>
           {account && <span className="badge badge-gray flex-shrink-0">{account.name}</span>}
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-wrap">
           <CategorySelect
             categories={categories}
             value={tx.category_id}
             onChange={(categoryId) => onUpdate(tx.id, { category_id: categoryId })}
-            className="input !py-1.5 !text-[13px] w-40 flex-shrink-0"
+            className="input !py-1.5 !text-[13px] w-32 sm:w-40 flex-shrink-0"
           />
-          <button
-            className="btn-ghost p-1.5 text-gray-400 hover:text-blue-600 disabled:opacity-40 flex-shrink-0"
-            title="Apply this category to all other transactions from this merchant"
-            onClick={handleApplyToMerchant}
-            disabled={applying}
-          >
-            <Layers className="w-3.5 h-3.5" />
-          </button>
 
           <div className="text-right flex-shrink-0 w-24">
             <p className={`text-sm font-semibold ${tx.amount_gbp < 0 ? 'text-gray-900' : 'text-green-600'}`}>
@@ -407,29 +399,40 @@ function TransactionRow({
             )}
           </div>
 
-          <button
-            className={cn(
-              'p-1.5 rounded-lg transition-colors flex-shrink-0',
-              tx.tag === 'business_travel' ? 'bg-amber-100 text-amber-600' : 'text-gray-400 hover:bg-gray-100 hover:text-amber-600'
-            )}
-            title={tx.tag === 'business_travel' ? 'Remove business travel tag' : 'Tag as business travel (reimbursable)'}
-            onClick={() => onUpdate(tx.id, { tag: tx.tag === 'business_travel' ? null : 'business_travel' })}
-          >
-            <Plane className="w-3.5 h-3.5" />
-          </button>
-          <button
-            className={cn(
-              'p-1.5 rounded-lg transition-colors flex-shrink-0',
-              tx.is_transfer ? 'bg-purple-100 text-purple-600' : 'text-gray-400 hover:bg-gray-100 hover:text-purple-600'
-            )}
-            title={tx.is_transfer ? 'Unmark as transfer' : 'Mark as transfer'}
-            onClick={() => onUpdate(tx.id, { is_transfer: !tx.is_transfer, transfer_group_id: null })}
-          >
-            <ArrowLeftRight className="w-3.5 h-3.5" />
-          </button>
-          <button className="btn-ghost p-1.5 text-gray-400 hover:text-red-500 flex-shrink-0" title="Delete" onClick={() => onDelete(tx.id)}>
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          {/* Grouped so these four wrap onto a new line together, rather than splitting mid-group. */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button
+              className="btn-ghost p-1.5 text-gray-400 hover:text-blue-600 disabled:opacity-40"
+              title="Apply this category to all other transactions from this merchant"
+              onClick={handleApplyToMerchant}
+              disabled={applying}
+            >
+              <Layers className="w-3.5 h-3.5" />
+            </button>
+            <button
+              className={cn(
+                'p-1.5 rounded-lg transition-colors',
+                tx.tag === 'business_travel' ? 'bg-amber-100 text-amber-600' : 'text-gray-400 hover:bg-gray-100 hover:text-amber-600'
+              )}
+              title={tx.tag === 'business_travel' ? 'Remove business travel tag' : 'Tag as business travel (reimbursable)'}
+              onClick={() => onUpdate(tx.id, { tag: tx.tag === 'business_travel' ? null : 'business_travel' })}
+            >
+              <Plane className="w-3.5 h-3.5" />
+            </button>
+            <button
+              className={cn(
+                'p-1.5 rounded-lg transition-colors',
+                tx.is_transfer ? 'bg-purple-100 text-purple-600' : 'text-gray-400 hover:bg-gray-100 hover:text-purple-600'
+              )}
+              title={tx.is_transfer ? 'Unmark as transfer' : 'Mark as transfer'}
+              onClick={() => onUpdate(tx.id, { is_transfer: !tx.is_transfer, transfer_group_id: null })}
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5" />
+            </button>
+            <button className="btn-ghost p-1.5 text-gray-400 hover:text-red-500" title="Delete" onClick={() => onDelete(tx.id)}>
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

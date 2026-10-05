@@ -113,17 +113,17 @@ export default function SpendingPage() {
           <h1 className="text-2xl font-bold text-gray-900">Spending</h1>
           <p className="text-sm text-gray-500 mt-0.5">{transactions.length} transactions across {accounts.length} accounts</p>
         </div>
-        <div className="flex gap-2">
-          <button className="btn-secondary" onClick={() => setShowAccounts(true)}>
+        <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:flex-wrap">
+          <button className="btn-secondary w-full sm:w-auto" onClick={() => setShowAccounts(true)}>
             <Settings className="w-4 h-4" /> Accounts
           </button>
-          <button className="btn-secondary" onClick={handleReconcileTransfers} disabled={reconciling} title="Re-check which transactions are genuine transfers between your imported accounts">
+          <button className="btn-secondary w-full sm:w-auto" onClick={handleReconcileTransfers} disabled={reconciling} title="Re-check which transactions are genuine transfers between your imported accounts">
             <RefreshCw className={`w-4 h-4 ${reconciling ? 'animate-spin' : ''}`} /> Re-check transfers
           </button>
-          <button className="btn-secondary" onClick={() => setShowAmazonMatch(true)} title="Match an Amazon order history export against your imported transactions to give them a proper title and category">
+          <button className="btn-secondary w-full sm:w-auto" onClick={() => setShowAmazonMatch(true)} title="Match an Amazon order history export against your imported transactions to give them a proper title and category">
             <ShoppingBag className="w-4 h-4" /> Match Amazon orders
           </button>
-          <button className="btn-primary" onClick={() => setShowUpload(true)}>
+          <button className="btn-primary w-full sm:w-auto" onClick={() => setShowUpload(true)}>
             <Upload className="w-4 h-4" /> Upload statement
           </button>
         </div>
