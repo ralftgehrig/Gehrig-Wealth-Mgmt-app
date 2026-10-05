@@ -30,7 +30,13 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {/* Mobile-only loading splash: shown on first paint, fades itself out via CSS. */}
+        <div className="mobile-splash lg:hidden" aria-hidden="true">
+          <img src="/splash-mobile.jpg" alt="" />
+        </div>
+        {children}
+      </body>
     </html>
   );
 }

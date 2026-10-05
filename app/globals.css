@@ -157,3 +157,23 @@
 .animate-fade-in  { animation: fadeIn  0.18s ease-out; }
 .animate-slide-up { animation: slideUp 0.22s ease-out; }
 .animate-sheet-up { animation: sheetUp 0.32s cubic-bezier(0.32, 0.72, 0, 1); }
+
+/* ── Mobile loading splash ──
+   Pure CSS (no JS) so it paints with the very first HTML, before hydration, and disappears on
+   its own via animation-fill-mode. Desktop never renders it at all (lg:hidden on the element). */
+@keyframes mobileSplashFade {
+  0%, 65% { opacity: 1; }
+  100%    { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+.mobile-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #9dd2e0;
+  animation: mobileSplashFade 1.4s ease forwards;
+}
+.mobile-splash img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
