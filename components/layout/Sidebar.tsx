@@ -104,14 +104,10 @@ export default function Sidebar() {
               <button
                 onClick={toggleHideBitcoin}
                 title={hideBitcoin ? 'Show Bitcoin account' : 'Hide Bitcoin account'}
-                className="w-7 h-7 flex items-center justify-center rounded-lg transition-all"
-                style={
-                  hideBitcoin
-                    ? { background: 'rgba(255,59,48,0.12)', color: '#FF3B30' }
-                    : { background: 'rgba(118,118,128,0.12)', color: '#8E8E93' }
-                }
+                className="w-6 h-6 flex items-center justify-center rounded-lg transition-all hover:opacity-100"
+                style={{ color: '#8E8E93', opacity: hideBitcoin ? 0.9 : 0.35 }}
               >
-                <Bitcoin className="w-3.5 h-3.5" strokeWidth={hideBitcoin ? 2 : 1.8} />
+                <Bitcoin className="w-3 h-3" strokeWidth={1.6} />
               </button>
             )}
             <button
