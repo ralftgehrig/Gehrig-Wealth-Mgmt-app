@@ -9,15 +9,23 @@ import AssetBreakdown from '@/components/dashboard/AssetBreakdown';
 import { computeNetWorth } from '@/lib/calculations/net-worth';
 import { formatCurrency, formatPercent, formatDate, ageFromDob } from '@/lib/utils';
 import { MEMBER_COLORS } from '@/lib/types';
-import { useDisplayCurrency } from '@/lib/display-currency';
+import { useDisplayCurrency, filterHiddenAccounts } from '@/lib/display-currency';
 import type { Account, BalanceSnapshot, FamilyMember, NetWorthSnapshot } from '@/lib/types';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function DashboardPage() {
-  const { data: accounts = [] } = useSWR<Account[]>('/api/accounts', fetcher);
+  const { currency: displayCurrency, rates, setCurrency, loading: fxLoading, fmt, mask, hideBitcoin } = useDisplayCurrency();
+  const { data: rawAccounts = [] } = useSWR<Account[]>('/api/accounts', fetcher);
   const { data: members = [] } = useSWR<FamilyMember[]>('/api/family-members', fetcher);
-  const { data: history = [] } = useSWR<{ date: string; total: number }[]>('/api/net-worth-history', fetcher);
+  const { data: history = [] } = useSWR<{ date: string; total: number }[]>(
+    `/api/net-worth-history${hideBitcoin ? '?hideBitcoin=1' : ''}`,
+    fetcher
+  );
+
+  // "Hide Bitcoin" is a personal display preference (see lib/display-currency.tsx) — it only
+  // filters what's rendered here, it's not the access restriction that hides it from Shannon.
+  const accounts = filterHiddenAccounts(rawAccounts, hideBitcoin);
 
   const [netWorth, setNetWorth] = useState<NetWorthSnapshot | null>(null);
 
@@ -39,7 +47,6 @@ export default function DashboardPage() {
   const changePct = prev && change ? change / prev : null;
 
   const memberMap = Object.fromEntries(members.map((m) => [m.id, m]));
-  const { currency: displayCurrency, rates, setCurrency, loading: fxLoading, fmt, mask } = useDisplayCurrency();
   const isGBP = displayCurrency === 'GBP';
 
   return (

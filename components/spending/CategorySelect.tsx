@@ -7,9 +7,13 @@ interface CategorySelectProps {
   value: string | null;
   onChange: (categoryId: string) => void;
   className?: string;
+  /** Adds a leading option (value "") for clearing/skipping the filter — only makes sense when
+   * this is used as a filter, not when assigning a category to a specific transaction. */
+  allowAll?: boolean;
+  allLabel?: string;
 }
 
-export default function CategorySelect({ categories, value, onChange, className }: CategorySelectProps) {
+export default function CategorySelect({ categories, value, onChange, className, allowAll, allLabel = 'Show all' }: CategorySelectProps) {
   const topLevel = categories.filter((c) => !c.parent_id).sort((a, b) => a.sort_order - b.sort_order);
   const childrenOf = (parentId: string) =>
     categories.filter((c) => c.parent_id === parentId).sort((a, b) => a.sort_order - b.sort_order);
@@ -20,6 +24,7 @@ export default function CategorySelect({ categories, value, onChange, className 
       value={value ?? ''}
       onChange={(e) => onChange(e.target.value)}
     >
+      {allowAll && <option value="">{allLabel}</option>}
       {topLevel.map((top) => {
         const children = childrenOf(top.id);
         if (children.length === 0) {

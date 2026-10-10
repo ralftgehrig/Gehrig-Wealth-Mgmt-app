@@ -12,7 +12,7 @@ import DivorceSettlement from '@/components/accounts/DivorceSettlement';
 import EmptyState from '@/components/ui/EmptyState';
 import { formatDate, groupBy } from '@/lib/utils';
 import { ACCOUNT_TYPE_LABELS, CATEGORY_COLORS, ACCOUNT_CATEGORY } from '@/lib/types';
-import { useDisplayCurrency } from '@/lib/display-currency';
+import { useDisplayCurrency, filterHiddenAccounts } from '@/lib/display-currency';
 import { useFeatureFlags } from '@/lib/auth/feature-flags';
 import type { Account, FamilyMember, BalanceSnapshot, AssetCategory } from '@/lib/types';
 
@@ -29,7 +29,7 @@ const CATEGORY_LABELS: Record<AssetCategory, string> = {
 };
 
 export default function AccountsPage() {
-  const { data: accounts = [], isLoading } = useSWR<Account[]>('/api/accounts', fetcher);
+  const { data: rawAccounts = [], isLoading } = useSWR<Account[]>('/api/accounts', fetcher);
   const { data: members = [] } = useSWR<FamilyMember[]>('/api/family-members', fetcher);
 
   const [showAddAccount, setShowAddAccount] = useState(false);
@@ -39,8 +39,12 @@ export default function AccountsPage() {
   const [viewingHistory, setViewingHistory] = useState<Account | null>(null);
   const [expandedMember, setExpandedMember] = useState<string | null>(null);
 
-  const { fmt, mask } = useDisplayCurrency();
+  const { fmt, mask, hideBitcoin } = useDisplayCurrency();
   const { canSeeDivorceSettlement } = useFeatureFlags();
+
+  // "Hide Bitcoin" is a personal display preference (see lib/display-currency.tsx) — it only
+  // filters what's rendered here, it's not the access restriction that hides it from Shannon.
+  const accounts = filterHiddenAccounts(rawAccounts, hideBitcoin);
 
   const byMember = groupBy(accounts, (a) => a.family_member_id);
 

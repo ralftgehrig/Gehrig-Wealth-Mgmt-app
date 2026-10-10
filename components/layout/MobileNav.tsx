@@ -2,9 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Wallet, TrendingUp, BarChart3, Lightbulb, Eye, EyeOff, Receipt } from 'lucide-react';
+import useSWR from 'swr';
+import { LayoutDashboard, Wallet, TrendingUp, BarChart3, Lightbulb, Eye, EyeOff, Bitcoin, Receipt } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useDisplayCurrency } from '@/lib/display-currency';
+import { useDisplayCurrency, isBitcoinAccountName } from '@/lib/display-currency';
+import type { Account } from '@/lib/types';
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 const navItems = [
   { href: '/dashboard',   icon: LayoutDashboard, label: 'Home' },
@@ -17,7 +21,9 @@ const navItems = [
 
 export default function MobileNav() {
   const pathname = usePathname();
-  const { privacyMode, togglePrivacy } = useDisplayCurrency();
+  const { privacyMode, togglePrivacy, hideBitcoin, toggleHideBitcoin } = useDisplayCurrency();
+  const { data: accounts = [] } = useSWR<Account[]>('/api/accounts', fetcher);
+  const hasBitcoinAccount = accounts.some((a) => isBitcoinAccountName(a.name));
 
   return (
     <nav
@@ -72,6 +78,32 @@ export default function MobileNav() {
             </Link>
           );
         })}
+
+        {/* Hide Bitcoin toggle */}
+        {hasBitcoinAccount && (
+          <button
+            onClick={toggleHideBitcoin}
+            aria-label={hideBitcoin ? 'Show Bitcoin account' : 'Hide Bitcoin account'}
+            className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-2xl transition-all duration-150 active:opacity-75 flex-shrink-0"
+            style={{ opacity: hideBitcoin ? 1 : 0.5 }}
+          >
+            <div
+              className="w-7 h-7 flex items-center justify-center rounded-xl transition-all duration-150"
+              style={hideBitcoin ? { background: 'rgba(255,59,48,0.12)' } : {}}
+            >
+              <Bitcoin className="w-[22px] h-[22px]" style={{ color: hideBitcoin ? '#FF3B30' : '#3C3C43' }} strokeWidth={hideBitcoin ? 2.2 : 1.8} />
+            </div>
+            <span
+              className="text-[10px] font-semibold tracking-tight"
+              style={{
+                color: hideBitcoin ? '#FF3B30' : '#3C3C43',
+                fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
+              }}
+            >
+              {hideBitcoin ? 'Show' : 'Hide'}
+            </span>
+          </button>
+        )}
 
         {/* Privacy toggle */}
         <button

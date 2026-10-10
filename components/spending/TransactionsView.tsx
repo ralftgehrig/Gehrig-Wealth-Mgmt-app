@@ -132,7 +132,7 @@ export default function TransactionsView({ transactions, accounts, categories, o
               <option value="">All accounts</option>
               {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
-            <CategorySelect categories={categories} value={categoryFilter || null} onChange={setCategoryFilter} />
+            <CategorySelect categories={categories} value={categoryFilter || null} onChange={setCategoryFilter} allowAll allLabel="Show all" />
           </div>
         )}
         {travelReview && (

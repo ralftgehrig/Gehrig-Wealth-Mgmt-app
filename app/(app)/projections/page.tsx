@@ -2,18 +2,20 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import useSWR, { mutate } from 'swr';
-import { BarChart3, Plus, Trash2, Zap, Target, Edit2 } from 'lucide-react';
+import { BarChart3, Plus, Trash2, Zap, Target, Edit2, Scale } from 'lucide-react';
 import ProjectionChart from '@/components/projections/ProjectionChart';
 import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';
 import { runProjection } from '@/lib/calculations/projections';
 import { computeNetWorth } from '@/lib/calculations/net-worth';
+import { computePostSettlementPortfolio } from '@/lib/calculations/divorce-settlement';
 import { formatCurrency, formatPercent } from '@/lib/utils';
 import { useDisplayCurrency } from '@/lib/display-currency';
+import { useFeatureFlags } from '@/lib/auth/feature-flags';
 import { ACCOUNT_CATEGORY } from '@/lib/types';
 import type {
   Account, BalanceSnapshot, FamilyMember, Scenario,
-  ScenarioAssumptions, ProjectionResult, AssetCategory, ProjectionEvent
+  ScenarioAssumptions, ProjectionResult, AssetCategory, ProjectionEvent, DivorceSettlementDebt
 } from '@/lib/types';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -31,6 +33,12 @@ export default function ProjectionsPage() {
   const { data: accounts = [] } = useSWR<Account[]>('/api/accounts', fetcher);
   const { data: members = [] } = useSWR<FamilyMember[]>('/api/family-members', fetcher);
   const { data: scenarios = [] } = useSWR<Scenario[]>('/api/scenarios', fetcher);
+  const { canSeeDivorceSettlement } = useFeatureFlags();
+  const { data: settlementDebts = [] } = useSWR<DivorceSettlementDebt[]>(
+    canSeeDivorceSettlement ? '/api/divorce-settlement/debts' : null,
+    fetcher
+  );
+  const [showPostSettlement, setShowPostSettlement] = useState(false);
 
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
   const [editingAssumptions, setEditingAssumptions] = useState<ScenarioAssumptions | null>(null);
@@ -49,9 +57,25 @@ export default function ProjectionsPage() {
   const baseline = scenarios.find((s) => s.is_baseline);
   const selected = scenarios.find((s) => s.id === selectedScenarioId) ?? baseline ?? scenarios[0];
 
+  const self = members.find((m) => m.relationship === 'self');
+  const postSettlementPortfolio = useMemo(
+    () => (canSeeDivorceSettlement ? computePostSettlementPortfolio(accounts, members, settlementDebts) : null),
+    [accounts, members, settlementDebts, canSeeDivorceSettlement]
+  );
+  const usingPostSettlement = showPostSettlement && canSeeDivorceSettlement && !!postSettlementPortfolio;
+
   // Build current portfolio
   const portfolio = useMemo(() => {
     if (!accounts.length) return null;
+
+    if (usingPostSettlement && postSettlementPortfolio) {
+      return {
+        byCategory: postSettlementPortfolio.byCategory,
+        totalGBP: postSettlementPortfolio.totalGBP,
+        selfDobYear: self?.date_of_birth ? new Date(self.date_of_birth).getFullYear() : undefined,
+      };
+    }
+
     const latestSnaps: Record<string, BalanceSnapshot> = {};
     for (const a of accounts) {
       if (a.latest_snapshot) latestSnaps[a.id] = a.latest_snapshot as BalanceSnapshot;
@@ -61,13 +85,12 @@ export default function ProjectionsPage() {
     for (const [cat, val] of Object.entries(nw.by_category) as [AssetCategory, number][]) {
       byCategory[cat] = val;
     }
-    const self = members.find((m) => m.relationship === 'self');
     return {
       byCategory,
       totalGBP: nw.total_gbp,
       selfDobYear: self?.date_of_birth ? new Date(self.date_of_birth).getFullYear() : undefined,
     };
-  }, [accounts, members]);
+  }, [accounts, members, self, usingPostSettlement, postSettlementPortfolio]);
 
   // Run projection when scenario or portfolio changes
   useEffect(() => {
@@ -201,6 +224,43 @@ export default function ProjectionsPage() {
         ))}
       </div>
 
+      {/* Post-divorce settlement toggle — visible only to your login */}
+      {canSeeDivorceSettlement && (
+        <div className="card flex items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <Scale className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Project post-divorce settlement net worth</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Starts the projection from what you&rsquo;d be left with after the settlement — your own accounts,
+                plus your half of joint accounts, adjusted for Shannon&rsquo;s premarital debts — instead of your
+                current total.
+              </p>
+              {showPostSettlement && !postSettlementPortfolio && (
+                <p className="text-xs text-amber-600 mt-1">
+                  Add a family member marked &ldquo;Self&rdquo; in Settings to use this.
+                </p>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={showPostSettlement}
+            onClick={() => setShowPostSettlement((v) => !v)}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+              showPostSettlement ? 'bg-primary-600' : 'bg-gray-200'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                showPostSettlement ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+      )}
+
       {/* Main projection chart */}
       {projResult && selected && (
         <div className="card">
@@ -210,13 +270,17 @@ export default function ProjectionsPage() {
               <p className="text-xs text-gray-500">
                 {selected.assumptions.horizon_years}-year projection · {mask(formatCurrency(portfolio.totalGBP))} today
                 {selected.assumptions.simulation_type === 'monte_carlo' && ' · Monte Carlo'}
+                {usingPostSettlement && ' · post-settlement'}
               </p>
             </div>
-            {selected.assumptions.simulation_type === 'monte_carlo' && (
-              <span className="badge badge-purple">
-                <Zap className="w-3 h-3" /> Monte Carlo
-              </span>
-            )}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {usingPostSettlement && <span className="badge badge-blue">Post-settlement</span>}
+              {selected.assumptions.simulation_type === 'monte_carlo' && (
+                <span className="badge badge-purple">
+                  <Zap className="w-3 h-3" /> Monte Carlo
+                </span>
+              )}
+            </div>
           </div>
 
           <ProjectionChart

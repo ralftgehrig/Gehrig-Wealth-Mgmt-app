@@ -3,6 +3,9 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import useSWR from 'swr';
 import type { Currency } from './types';
+import { isBitcoinAccountName } from './account-name';
+
+export { isBitcoinAccountName };
 
 export const DISPLAY_CURRENCIES: Currency[] = ['GBP', 'USD', 'EUR', 'CAD', 'SGD'];
 
@@ -43,6 +46,17 @@ export function fxFormat(
   }).format(Math.abs(v))}`;
 }
 
+// ── Personal "hide Bitcoin" display preference ─────────────────────────────────
+// A convenience/privacy toggle for whoever is logged in (e.g. while screen-sharing) — not an
+// access restriction: the account and its data are still fully fetched, just filtered out of
+// what's rendered. See lib/auth/account-restrictions.ts for the separate, real access control
+// that hides the same account from Shannon's login entirely.
+
+/** Drops the Bitcoin account from a list of accounts when the preference is on. */
+export function filterHiddenAccounts<T extends { name: string }>(accounts: T[], hideBitcoin: boolean): T[] {
+  return hideBitcoin ? accounts.filter((a) => !isBitcoinAccountName(a.name)) : accounts;
+}
+
 // ── Context ───────────────────────────────────────────────────────────────────
 
 const rateFetcher = (url: string) =>
@@ -58,6 +72,9 @@ interface DisplayCurrencyCtx {
   /** True when amounts are hidden for demo/privacy purposes */
   privacyMode: boolean;
   togglePrivacy: () => void;
+  /** True when the Bitcoin account is hidden from view (personal preference, not a restriction) */
+  hideBitcoin: boolean;
+  toggleHideBitcoin: () => void;
   /** Format a GBP amount in the selected display currency, masking if privacy mode is on */
   fmt: (v: number, compact?: boolean) => string;
   /** Wrap any pre-formatted string — returns '•••' when privacy mode is on */
@@ -73,6 +90,8 @@ const DisplayCurrencyContext = createContext<DisplayCurrencyCtx>({
   displayCurrencies: DISPLAY_CURRENCIES,
   privacyMode: false,
   togglePrivacy: () => {},
+  hideBitcoin: false,
+  toggleHideBitcoin: () => {},
   fmt: () => '•••',
   mask: (s) => s,
 });
@@ -80,6 +99,7 @@ const DisplayCurrencyContext = createContext<DisplayCurrencyCtx>({
 export function DisplayCurrencyProvider({ children }: { children: ReactNode }) {
   const [currency, setCurrencyRaw] = useState<Currency>('GBP');
   const [privacyMode, setPrivacyMode] = useState(false);
+  const [hideBitcoin, setHideBitcoin] = useState(false);
 
   const { data: rates = {}, isLoading } = useSWR('/api/fx-rates', rateFetcher, {
     revalidateOnFocus: false,
@@ -94,6 +114,8 @@ export function DisplayCurrencyProvider({ children }: { children: ReactNode }) {
       if (savedCurrency && DISPLAY_CURRENCIES.includes(savedCurrency)) setCurrencyRaw(savedCurrency);
       const savedPrivacy = localStorage.getItem('privacyMode');
       if (savedPrivacy === 'true') setPrivacyMode(true);
+      const savedHideBitcoin = localStorage.getItem('hideBitcoin');
+      if (savedHideBitcoin === 'true') setHideBitcoin(true);
     } catch {}
   }, []);
 
@@ -106,6 +128,14 @@ export function DisplayCurrencyProvider({ children }: { children: ReactNode }) {
     setPrivacyMode((prev) => {
       const next = !prev;
       try { localStorage.setItem('privacyMode', String(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  const toggleHideBitcoin = useCallback(() => {
+    setHideBitcoin((prev) => {
+      const next = !prev;
+      try { localStorage.setItem('hideBitcoin', String(next)); } catch {}
       return next;
     });
   }, []);
@@ -132,6 +162,8 @@ export function DisplayCurrencyProvider({ children }: { children: ReactNode }) {
         displayCurrencies: DISPLAY_CURRENCIES,
         privacyMode,
         togglePrivacy,
+        hideBitcoin,
+        toggleHideBitcoin,
         fmt,
         mask,
       }}

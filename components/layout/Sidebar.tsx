@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import useSWR from 'swr';
 import {
   LayoutDashboard,
   Wallet,
@@ -12,12 +13,15 @@ import {
   LogOut,
   Eye,
   EyeOff,
+  Bitcoin,
   Receipt,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
-import { useDisplayCurrency } from '@/lib/display-currency';
-import type { Currency } from '@/lib/types';
+import { useDisplayCurrency, isBitcoinAccountName } from '@/lib/display-currency';
+import type { Account, Currency } from '@/lib/types';
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 const navItems = [
   { href: '/dashboard',   icon: LayoutDashboard, label: 'Dashboard' },
@@ -32,7 +36,9 @@ const navItems = [
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { currency, setCurrency, displayCurrencies, privacyMode, togglePrivacy } = useDisplayCurrency();
+  const { currency, setCurrency, displayCurrencies, privacyMode, togglePrivacy, hideBitcoin, toggleHideBitcoin } = useDisplayCurrency();
+  const { data: accounts = [] } = useSWR<Account[]>('/api/accounts', fetcher);
+  const hasBitcoinAccount = accounts.some((a) => isBitcoinAccountName(a.name));
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -93,20 +99,36 @@ export default function Sidebar() {
       <div className="px-4 py-3" style={{ borderTop: '0.5px solid rgba(60,60,67,0.12)' }}>
         <div className="flex items-center justify-between mb-2">
           <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#8E8E93' }}>Display currency</p>
-          <button
-            onClick={togglePrivacy}
-            title={privacyMode ? 'Show amounts' : 'Hide amounts for demo'}
-            className="w-7 h-7 flex items-center justify-center rounded-lg transition-all"
-            style={
-              privacyMode
-                ? { background: 'rgba(255,59,48,0.12)', color: '#FF3B30' }
-                : { background: 'rgba(118,118,128,0.12)', color: '#8E8E93' }
-            }
-          >
-            {privacyMode
-              ? <EyeOff className="w-3.5 h-3.5" strokeWidth={2} />
-              : <Eye className="w-3.5 h-3.5" strokeWidth={1.8} />}
-          </button>
+          <div className="flex items-center gap-1.5">
+            {hasBitcoinAccount && (
+              <button
+                onClick={toggleHideBitcoin}
+                title={hideBitcoin ? 'Show Bitcoin account' : 'Hide Bitcoin account'}
+                className="w-7 h-7 flex items-center justify-center rounded-lg transition-all"
+                style={
+                  hideBitcoin
+                    ? { background: 'rgba(255,59,48,0.12)', color: '#FF3B30' }
+                    : { background: 'rgba(118,118,128,0.12)', color: '#8E8E93' }
+                }
+              >
+                <Bitcoin className="w-3.5 h-3.5" strokeWidth={hideBitcoin ? 2 : 1.8} />
+              </button>
+            )}
+            <button
+              onClick={togglePrivacy}
+              title={privacyMode ? 'Show amounts' : 'Hide amounts for demo'}
+              className="w-7 h-7 flex items-center justify-center rounded-lg transition-all"
+              style={
+                privacyMode
+                  ? { background: 'rgba(255,59,48,0.12)', color: '#FF3B30' }
+                  : { background: 'rgba(118,118,128,0.12)', color: '#8E8E93' }
+              }
+            >
+              {privacyMode
+                ? <EyeOff className="w-3.5 h-3.5" strokeWidth={2} />
+                : <Eye className="w-3.5 h-3.5" strokeWidth={1.8} />}
+            </button>
+          </div>
         </div>
         <div className="flex flex-wrap gap-1">
           {displayCurrencies.map((c) => (
