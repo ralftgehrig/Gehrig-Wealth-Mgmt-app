@@ -15,10 +15,6 @@ tsconfig.tsbuildinfo
 .env.test.local
 .env.production.local
 
-# PWA generated files (committed after build, but not re-generated ones)
-# public/sw.js
-# public/workbox-*.js
-
 # OS
 .DS_Store
 Thumbs.db
