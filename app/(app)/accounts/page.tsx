@@ -8,10 +8,12 @@ import AccountForm from '@/components/accounts/AccountForm';
 import BalanceUpdateForm from '@/components/accounts/BalanceUpdateForm';
 import HistoryEntryForm from '@/components/accounts/HistoryEntryForm';
 import SnapshotHistoryModal from '@/components/accounts/SnapshotHistoryModal';
+import DivorceSettlement from '@/components/accounts/DivorceSettlement';
 import EmptyState from '@/components/ui/EmptyState';
 import { formatDate, groupBy } from '@/lib/utils';
 import { ACCOUNT_TYPE_LABELS, CATEGORY_COLORS, ACCOUNT_CATEGORY } from '@/lib/types';
 import { useDisplayCurrency } from '@/lib/display-currency';
+import { useFeatureFlags } from '@/lib/auth/feature-flags';
 import type { Account, FamilyMember, BalanceSnapshot, AssetCategory } from '@/lib/types';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -38,6 +40,7 @@ export default function AccountsPage() {
   const [expandedMember, setExpandedMember] = useState<string | null>(null);
 
   const { fmt, mask } = useDisplayCurrency();
+  const { canSeeDivorceSettlement } = useFeatureFlags();
 
   const byMember = groupBy(accounts, (a) => a.family_member_id);
 
@@ -191,6 +194,7 @@ export default function AccountsPage() {
                               <div className="flex items-center gap-2">
                                 <p className="text-sm font-medium text-gray-900 truncate">{account.name}</p>
                                 <span className="badge badge-gray flex-shrink-0">{ACCOUNT_TYPE_LABELS[account.account_type]}</span>
+                                {canSeeDivorceSettlement && account.is_joint && <span className="badge badge-blue flex-shrink-0">Joint</span>}
                                 {account.is_liability && <span className="badge badge-red flex-shrink-0">Debt</span>}
                               </div>
                               <p className="text-xs text-gray-400 mt-0.5">
@@ -240,6 +244,8 @@ export default function AccountsPage() {
           </div>
         );
       })}
+
+      {canSeeDivorceSettlement && <DivorceSettlement accounts={accounts} members={members} />}
 
       <Modal open={showAddAccount} onClose={() => setShowAddAccount(false)} title="Add account">
         <AccountForm members={members} onSubmit={handleAddAccount} onCancel={() => setShowAddAccount(false)} />

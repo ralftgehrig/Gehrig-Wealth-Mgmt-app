@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSessionEmail, isAccountRestricted } from '@/lib/auth/account-restrictions';
+import { canSeeDivorceSettlement } from '@/lib/auth/divorce-settlement';
 
 async function assertVisible(supabase: ReturnType<typeof createClient>, id: string) {
   const email = await getSessionEmail(supabase);
@@ -18,6 +19,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const body = await req.json();
   delete body.restricted_emails; // not settable through the regular account-edit form
+  if (!canSeeDivorceSettlement(await getSessionEmail(supabase))) delete body.is_joint;
 
   const { data, error } = await supabase
     .from('accounts')

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSessionEmail, visibleAccounts } from '@/lib/auth/account-restrictions';
+import { canSeeDivorceSettlement } from '@/lib/auth/divorce-settlement';
 
 export async function GET() {
   const supabase = createClient();
@@ -28,10 +29,14 @@ export async function GET() {
     snapByAccount[(snap as { account_id: string }).account_id] = snap;
   }
 
-  const enriched = visible.map((a) => ({
-    ...a,
-    latest_snapshot: snapByAccount[a.id] ?? null,
-  }));
+  const showJoint = canSeeDivorceSettlement(email);
+  const enriched = visible.map((a) => {
+    const { is_joint: _is_joint, ...rest } = a;
+    return {
+      ...(showJoint ? a : rest),
+      latest_snapshot: snapByAccount[a.id] ?? null,
+    };
+  });
 
   return NextResponse.json(enriched);
 }

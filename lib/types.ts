@@ -71,9 +71,22 @@ export interface Account {
   created_at: string;
   /** Login emails this account is hidden from — server-only; always stripped before a response reaches the client. */
   restricted_emails?: string[];
+  /** Counts toward the divorce settlement split. Stripped from responses to restricted logins. */
+  is_joint: boolean;
   // joined
   family_member?: FamilyMember;
   latest_snapshot?: BalanceSnapshot | null;
+}
+
+/** A premarital debt one spouse brought into the marriage that's since been paid off by the
+ * other — deducted from their share of the joint-account settlement. Part of the restricted
+ * divorce-settlement feature (see lib/auth/divorce-settlement.ts). */
+export interface DivorceSettlementDebt {
+  id: string;
+  name: string;
+  amount_gbp: number;
+  notes: string | null;
+  created_at: string;
 }
 
 export interface BalanceSnapshot {

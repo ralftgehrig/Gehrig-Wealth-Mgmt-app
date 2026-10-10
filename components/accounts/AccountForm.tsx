@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { FamilyMember, AccountType, Currency, Account } from '@/lib/types';
 import { ACCOUNT_TYPE_LABELS, CURRENCIES } from '@/lib/types';
+import { useFeatureFlags } from '@/lib/auth/feature-flags';
 
 const LIABILITY_TYPES: AccountType[] = ['mortgage', 'credit_card', 'loan'];
 
@@ -15,6 +16,7 @@ interface AccountFormProps {
 
 export default function AccountForm({ members, account, onSubmit, onCancel }: AccountFormProps) {
   const isEdit = !!account;
+  const { canSeeDivorceSettlement } = useFeatureFlags();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     family_member_id: account?.family_member_id ?? members[0]?.id ?? '',
@@ -23,6 +25,7 @@ export default function AccountForm({ members, account, onSubmit, onCancel }: Ac
     account_type: (account?.account_type ?? 'isa') as AccountType,
     currency: (account?.currency ?? 'GBP') as Currency,
     is_liability: account?.is_liability ?? false,
+    is_joint: account?.is_joint ?? false,
     notes: account?.notes ?? '',
   });
 
@@ -88,6 +91,12 @@ export default function AccountForm({ members, account, onSubmit, onCancel }: Ac
         <input type="checkbox" id="is_liability" checked={form.is_liability} onChange={(e) => set('is_liability', e.target.checked)} className="rounded border-gray-300" />
         <label htmlFor="is_liability" className="text-sm text-gray-700">This is a liability (debt)</label>
       </div>
+      {canSeeDivorceSettlement && (
+        <div className="flex items-center gap-2">
+          <input type="checkbox" id="is_joint" checked={form.is_joint} onChange={(e) => set('is_joint', e.target.checked)} className="rounded border-gray-300" />
+          <label htmlFor="is_joint" className="text-sm text-gray-700">Joint account (counts toward the divorce settlement)</label>
+        </div>
+      )}
       <div className="flex gap-2 pt-2">
         <button type="button" className="btn-secondary flex-1" onClick={onCancel}>Cancel</button>
         <button type="submit" className="btn-primary flex-1" disabled={loading}>
