@@ -69,6 +69,8 @@ export interface Account {
   notes: string | null;
   is_active: boolean;
   created_at: string;
+  /** Login emails this account is hidden from — server-only; always stripped before a response reaches the client. */
+  restricted_emails?: string[];
   // joined
   family_member?: FamilyMember;
   latest_snapshot?: BalanceSnapshot | null;

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getSessionEmail, visibleAccounts } from '@/lib/auth/account-restrictions';
 
 export async function GET() {
   const supabase = createClient();
@@ -14,6 +15,9 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  const email = await getSessionEmail(supabase);
+  const visible = visibleAccounts(accounts ?? [], email);
+
   // Attach latest snapshot to each account
   const { data: latestSnaps } = await supabase
     .from('latest_snapshots')
@@ -24,7 +28,7 @@ export async function GET() {
     snapByAccount[(snap as { account_id: string }).account_id] = snap;
   }
 
-  const enriched = (accounts ?? []).map((a) => ({
+  const enriched = visible.map((a) => ({
     ...a,
     latest_snapshot: snapByAccount[a.id] ?? null,
   }));

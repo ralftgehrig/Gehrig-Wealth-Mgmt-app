@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { buildNetWorthTimeSeries } from '@/lib/calculations/net-worth';
+import { getSessionEmail, restrictedAccountIds } from '@/lib/auth/account-restrictions';
 import type { Account, BalanceSnapshot } from '@/lib/types';
 
 export async function GET() {
@@ -15,6 +16,11 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to load data' }, { status: 500 });
   }
 
-  const series = buildNetWorthTimeSeries(accounts as Account[], snapshots as BalanceSnapshot[]);
+  const email = await getSessionEmail(supabase);
+  const hiddenIds = restrictedAccountIds(accounts as Account[], email);
+  const visibleAccts = (accounts as Account[]).filter((a) => !hiddenIds.has(a.id));
+  const visibleSnaps = (snapshots as BalanceSnapshot[]).filter((s) => !hiddenIds.has(s.account_id));
+
+  const series = buildNetWorthTimeSeries(visibleAccts, visibleSnaps);
   return NextResponse.json(series);
 }

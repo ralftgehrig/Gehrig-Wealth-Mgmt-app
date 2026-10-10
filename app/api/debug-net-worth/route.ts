@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getSessionEmail, restrictedAccountIds } from '@/lib/auth/account-restrictions';
 import type { Account, BalanceSnapshot } from '@/lib/types';
 
 // Returns per-account net worth breakdown for every date in a range.
@@ -19,11 +20,16 @@ export async function GET(req: Request) {
 
   if (!accounts || !snapshots) return NextResponse.json({ error: 'load failed' }, { status: 500 });
 
-  const acctMap = Object.fromEntries((accounts as Account[]).map((a) => [a.id, a]));
+  const email = await getSessionEmail(supabase);
+  const hiddenIds = restrictedAccountIds(accounts as Account[], email);
+  const visibleAccts = (accounts as Account[]).filter((a) => !hiddenIds.has(a.id));
+  const visibleSnaps = (snapshots as BalanceSnapshot[]).filter((s) => !hiddenIds.has(s.account_id));
+
+  const acctMap = Object.fromEntries(visibleAccts.map((a) => [a.id, a]));
 
   // Build running latest per account up to `from`
   const latest: Record<string, BalanceSnapshot> = {};
-  for (const snap of snapshots as BalanceSnapshot[]) {
+  for (const snap of visibleSnaps) {
     if (snap.snapshot_date < from) {
       const prev = latest[snap.account_id];
       if (!prev || snap.snapshot_date > prev.snapshot_date) latest[snap.account_id] = snap;
@@ -32,7 +38,7 @@ export async function GET(req: Request) {
 
   // Collect dates in range
   const byDate: Record<string, BalanceSnapshot[]> = {};
-  for (const snap of snapshots as BalanceSnapshot[]) {
+  for (const snap of visibleSnaps) {
     if (snap.snapshot_date >= from && snap.snapshot_date <= to) {
       if (!byDate[snap.snapshot_date]) byDate[snap.snapshot_date] = [];
       byDate[snap.snapshot_date].push(snap);
