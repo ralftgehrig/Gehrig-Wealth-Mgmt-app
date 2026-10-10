@@ -6,6 +6,8 @@ import { formatPercent } from '@/lib/utils';
 import { useDisplayCurrency } from '@/lib/display-currency';
 import { buildNetWorthGrowth, type NetWorthHistoryPoint } from '@/lib/calculations/net-worth';
 
+const YEARS = 5;
+
 interface NetWorthGrowthProps {
   history: NetWorthHistoryPoint[];
 }
@@ -47,35 +49,38 @@ function GrowthTile({
 }
 
 export default function NetWorthGrowth({ history }: NetWorthGrowthProps) {
-  const { mask } = useDisplayCurrency();
-  const growth = buildNetWorthGrowth(history);
+  const { fmt, mask } = useDisplayCurrency();
+  const growth = buildNetWorthGrowth(history, YEARS);
 
-  const chartData = growth.byYear.map((y) => ({
-    year: String(y.year),
-    pct: y.changePct !== null ? Math.round(y.changePct * 1000) / 10 : null,
-  }));
+  // Chronological left to right, current (in-progress) year rightmost.
+  const chartData = [
+    ...growth.byYear.map((y) => ({
+      label: String(y.year),
+      pct: y.changePct !== null ? Math.round(y.changePct * 1000) / 10 : null,
+      partial: false,
+    })),
+    {
+      label: 'YTD',
+      pct: growth.ytd.changePct !== null ? Math.round(growth.ytd.changePct * 1000) / 10 : null,
+      partial: true,
+    },
+  ];
   const hasChartData = chartData.some((d) => d.pct !== null);
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <GrowthTile label="Year to date" change={growth.ytd.change} changePct={growth.ytd.changePct} emphasis />
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
         {growth.byYear.map((y) => (
           <GrowthTile key={y.year} label={String(y.year)} change={y.change} changePct={y.changePct} />
         ))}
-        <GrowthTile
-          label={`${growth.cumulative.fromYear}–${growth.cumulative.toYear}`}
-          change={growth.cumulative.change}
-          changePct={growth.cumulative.changePct}
-          emphasis
-        />
+        <GrowthTile label="YTD" change={growth.ytd.change} changePct={growth.ytd.changePct} emphasis />
       </div>
 
       {hasChartData && (
         <ResponsiveContainer width="100%" height={160}>
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-            <XAxis dataKey="year" tick={{ fontSize: 11, fill: '#9ca3af' }} tickLine={false} axisLine={false} />
+            <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#9ca3af' }} tickLine={false} axisLine={false} />
             <YAxis
               tickFormatter={(v: number) => mask(`${v}%`)}
               tick={{ fontSize: 10, fill: '#9ca3af' }}
@@ -88,12 +93,29 @@ export default function NetWorthGrowth({ history }: NetWorthGrowthProps) {
               contentStyle={{ borderRadius: '12px', border: '1px solid #f3f4f6', fontSize: '12px' }}
             />
             <Bar dataKey="pct" radius={[6, 6, 6, 6]}>
-              {chartData.map((d, i) => (
-                <Cell key={i} fill={d.pct === null ? '#e5e7eb' : d.pct >= 0 ? '#22c55e' : '#ef4444'} />
-              ))}
+              {chartData.map((d, i) => {
+                const color = d.pct === null ? '#e5e7eb' : d.pct >= 0 ? '#22c55e' : '#ef4444';
+                return <Cell key={i} fill={color} fillOpacity={d.partial ? 0.5 : 1} />;
+              })}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+      )}
+
+      {/* 5-year cumulative total */}
+      {growth.cumulative.change !== null && growth.cumulative.changePct !== null && (
+        <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+          <p className="text-sm text-gray-500">
+            {growth.cumulative.fromYear}–{growth.cumulative.toYear} total
+          </p>
+          <div className={`flex items-center gap-2 ${growth.cumulative.change >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+            {growth.cumulative.change >= 0
+              ? <TrendingUp className="w-4 h-4 flex-shrink-0" />
+              : <TrendingDown className="w-4 h-4 flex-shrink-0" />}
+            <p className="text-base font-bold">{mask(formatPercent(growth.cumulative.changePct))}</p>
+            <p className="text-sm font-semibold">{mask(fmt(growth.cumulative.change))}</p>
+          </div>
+        </div>
       )}
     </div>
   );

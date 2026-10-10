@@ -116,17 +116,27 @@ export interface PeriodGrowth {
 }
 
 /**
- * The net worth total as of a cutoff date: the latest history point on or before it (history is
- * balance-snapshot-driven and sparse/irregular, so this is "as of the most recent known data at
- * or before that date", not an exact reading for that exact day).
+ * The net worth total as of a cutoff date (history is balance-snapshot-driven and sparse/
+ * irregular, so an exact reading for that day rarely exists). When the cutoff falls between two
+ * known snapshots, linearly interpolate between them to estimate the likely figure on that date.
+ * When the cutoff is after the last known snapshot, use that latest known value (nothing later to
+ * interpolate with). When there's no snapshot on or before the cutoff, there's nothing to go on.
  */
 function valueAsOf(history: NetWorthHistoryPoint[], cutoffDate: string): number | null {
-  let result: number | null = null;
+  let before: NetWorthHistoryPoint | null = null;
   for (const point of history) {
-    if (point.date > cutoffDate) break;
-    result = point.total;
+    if (point.date <= cutoffDate) {
+      before = point;
+      continue;
+    }
+    if (!before) return null;
+    const beforeTime = new Date(before.date).getTime();
+    const afterTime = new Date(point.date).getTime();
+    const cutoffTime = new Date(cutoffDate).getTime();
+    const frac = (cutoffTime - beforeTime) / (afterTime - beforeTime);
+    return before.total + (point.total - before.total) * frac;
   }
-  return result;
+  return before ? before.total : null;
 }
 
 function growthBetween(history: NetWorthHistoryPoint[], startCutoff: string, endCutoff: string): PeriodGrowth {
