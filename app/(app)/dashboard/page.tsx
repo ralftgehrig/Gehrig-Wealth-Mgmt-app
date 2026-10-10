@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import useSWR from 'swr';
 import { TrendingUp, TrendingDown, ArrowUpRight, RefreshCw, Users } from 'lucide-react';
 import NetWorthChart from '@/components/dashboard/NetWorthChart';
@@ -25,19 +25,17 @@ export default function DashboardPage() {
 
   // "Hide Bitcoin" is a personal display preference (see lib/display-currency.tsx) — it only
   // filters what's rendered here, it's not the access restriction that hides it from Shannon.
-  const accounts = filterHiddenAccounts(rawAccounts, hideBitcoin);
+  const accounts = useMemo(() => filterHiddenAccounts(rawAccounts, hideBitcoin), [rawAccounts, hideBitcoin]);
 
-  const [netWorth, setNetWorth] = useState<NetWorthSnapshot | null>(null);
-
-  useEffect(() => {
-    if (!accounts.length) return;
+  const netWorth: NetWorthSnapshot | null = useMemo(() => {
+    if (!accounts.length) return null;
     const latestSnaps: Record<string, BalanceSnapshot> = {};
     for (const account of accounts) {
       if (account.latest_snapshot) {
         latestSnaps[account.id] = account.latest_snapshot as BalanceSnapshot;
       }
     }
-    setNetWorth(computeNetWorth(accounts, latestSnaps));
+    return computeNetWorth(accounts, latestSnaps);
   }, [accounts]);
 
   // Change vs previous snapshot
